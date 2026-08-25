@@ -54,6 +54,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         }
 
         orden.setEstado(nuevoEstado);
+        orden.setPdfBytes(null);
         orden = ordenCompraRepository.save(orden);
 
         if (estadoAnterior == EstadoOrdenCompra.APROBADA && nuevoEstado == EstadoOrdenCompra.RECIBIDA) {
