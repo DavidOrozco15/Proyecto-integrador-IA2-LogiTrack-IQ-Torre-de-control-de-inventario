@@ -49,6 +49,61 @@ CREATE TABLE IF NOT EXISTS movimiento_detalles (
     FOREIGN KEY (producto_id) REFERENCES productos(id)
 );
 
+CREATE TABLE IF NOT EXISTS proveedores (
+    id BIGSERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    contacto VARCHAR(100),
+    telefono VARCHAR(20),
+    dias_entrega INT NOT NULL
+);
+
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS proveedor_principal_id BIGINT;
+ALTER TABLE productos ADD FOREIGN KEY (proveedor_principal_id) REFERENCES proveedores(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS ordenes_compra (
+    id BIGSERIAL PRIMARY KEY,
+    producto_id BIGINT NOT NULL,
+    proveedor_id BIGINT NOT NULL,
+    bodega_destino_id BIGINT NOT NULL,
+    cantidad INT NOT NULL,
+    precio_unitario DECIMAL(10, 2) NOT NULL,
+    total DECIMAL(10, 2) NOT NULL,
+    estado VARCHAR(20) NOT NULL,
+    pdf_bytes BYTEA,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (producto_id) REFERENCES productos(id),
+    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
+    FOREIGN KEY (bodega_destino_id) REFERENCES bodegas(id)
+);
+
+CREATE TABLE IF NOT EXISTS resumen_panel (
+    id BIGSERIAL PRIMARY KEY,
+    fecha DATE NOT NULL,
+    narrativa VARCHAR(2000) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS alertas_panel (
+    id BIGSERIAL PRIMARY KEY,
+    resumen_id BIGINT NOT NULL,
+    severidad VARCHAR(10) NOT NULL,
+    titulo VARCHAR(100) NOT NULL,
+    detalle VARCHAR(500) NOT NULL,
+    producto_id BIGINT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (resumen_id) REFERENCES resumen_panel(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS acciones_sugeridas_panel (
+    id BIGSERIAL PRIMARY KEY,
+    resumen_id BIGINT NOT NULL,
+    tipo VARCHAR(30) NOT NULL,
+    descripcion VARCHAR(500) NOT NULL,
+    orden_id BIGINT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (resumen_id) REFERENCES resumen_panel(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS auditorias (
     id BIGSERIAL PRIMARY KEY,
     tipo_operacion VARCHAR(20) NOT NULL,

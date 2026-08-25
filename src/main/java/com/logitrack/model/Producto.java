@@ -40,4 +40,8 @@ public class Producto {
     @Min(value = 0, message = "El precio no puede ser negativo")
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal precio;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "proveedor_principal_id")
+    private Proveedor proveedorPrincipal;
 }
