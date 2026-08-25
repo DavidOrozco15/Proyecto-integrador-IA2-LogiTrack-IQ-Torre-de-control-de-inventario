@@ -4,10 +4,10 @@ import com.logitrack.dto.ProductoRiesgoDTO;
 import com.logitrack.repository.InventarioBodegaRepository;
 import com.logitrack.repository.MovimientoDetalleRepository;
 import com.logitrack.repository.ProductoRepository;
+import com.logitrack.util.FechasBogota;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,15 +23,15 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
     public List<ProductoRiesgoDTO> obtenerProductosEnRiesgo() {
         List<ProductoRiesgoDTO> enRiesgo = new ArrayList<>();
         var productos = productoRepository.findAll();
-        var ahora = LocalDateTime.now();
-        var hace30Dias = ahora.minusDays(30);
+        var inicio = FechasBogota.inicioUltimos30DiasBogota();
+        var fin = FechasBogota.finDeHoyBogota();
 
         for (var producto : productos) {
             Integer stockTotal = inventarioBodegaRepository.sumStockByProductoId(producto.getId());
             if (stockTotal == null) stockTotal = 0;
 
             Integer salidas30 = movimientoDetalleRepository.sumSalidasPorProductoEnRango(
-                    producto.getId(), hace30Dias, ahora);
+                    producto.getId(), inicio, fin);
             if (salidas30 == null) salidas30 = 0;
 
             if (salidas30 == 0) continue;
