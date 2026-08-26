@@ -3,7 +3,6 @@ package com.logitrack.dto;
 import com.logitrack.model.Rol;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -23,7 +22,4 @@ public class RegisterRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 6)
     private String password;
-
-    @NotNull(message = "El rol es obligatorio")
-    private Rol rol;
 }

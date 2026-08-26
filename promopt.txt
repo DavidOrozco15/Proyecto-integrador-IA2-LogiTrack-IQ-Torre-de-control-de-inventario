@@ -1,0 +1,210 @@
+# CONTEXTO DEL PROYECTO LogiTrack IA2
+- Spring Boot backend ya existente para bodegas, productos, movimientos
+- Base de datos: **PostgreSQL en Supabase** (nube) - esquema `proyecto`
+- Pruebas: H2 con modo PostgreSQL - esquema `PUBLIC`
+- Ya se fixeó el campo pdfBytes con `columnDefinition = "bytea"` SIN `@Lob` para evitar errores de Large Object en Supabase
+- Seguridad JWT ya implementada con roles: ADMIN, EMPLEADO, AGENTE
+- Puertos: 8080 (backend), 3000 (frontend posible)
+
+# OBJETIVO DEL MCP (PostgreSQL/Supabase aware)
+Crear un servidor MCP pequeño que sea capa de intermediación entre n8n y la API REST del backend Spring Boot. Considerando Supabase:
+
+- **NO accede directamente a la base de datos** - usa la API REST
+- **NO implementa reglas de negocio** - solo llamadas a endpoints
+- **Autenticación con rol AGENTE** - las herramientas deben usar un usuario con rol AGENTE en Spring Security
+- Compatible con la configuración actual de SecurityConfig.java
+
+# HERRAMIENTAS OBLIGATORIAS (6 exactamente)
+
+Todas las herramientas usan GET/POST sobre los endpoints ya definidos en el proyecto Spring Boot:
+
+1. **consultar_stock_producto(productoId)** 
+   - Endpoint: `GET /productos/{id}/stock`
+   - Parámetro: productoId (Long)
+   - Retorna: stock actual y detalles del producto
+   - Consideración Supabase: compatible con la configuración actual
+
+2. **consultar_bodegas_criticas()**
+   - Endpoint: `GET /bodegas/criticas`
+   - Retorna: bodegas con ocupación >= 90%
+   - Fórmula: (unidades / capacidad) × 100 >= 90
+
+3. **consultar_productos_en_riesgo()**
+   - Endpoint: `GET /productos/riesgo`
+   - Retorna: lista productos con stock below punto de reorden
+   - Incluye para cada: productoId, nombre, proveedorId, stockTotal, consumoDiarioPromedio, puntoReorden, diasCobertura, estadoCobertura, bodegaDestinoId
+   - La bodegaDestinoId sugerida es la bodega con menor stock de ese producto (empate -> menor id)
+
+4. **consultar_kpis()**
+   - Endpoint: `GET /kpis`
+   - Retorna los 4 indicadores con estructura exacta:
+     {
+       "calculadoEn": "2026-08-24T06:00:00-05:00",
+       "ocupacionPorBodega": [{ "bodegaId": 1, "nombre": "Bogota", "porcentaje": 92.5 }],
+       "productosEnQuiebre": 1,
+       "productosEnRiesgo": 2,
+       "ordenesPorAprobar": { "cantidad": 1, "montoTotal": 45000.0 },
+       "movimientosAyer": { "entrada": 2, "salida": 3, "transferencia": 1 }
+     }
+
+5. **crear_orden_borrador(productoId, proveedorId, bodegaDestinoId, cantidad, precioUnitario)**
+   - Endpoint: `POST /ordenes`
+   - Crea una orden en estado BORRADOR
+   - El servidor calcula total (cantidad × precioUnitario)
+   - Retorna la orden creada con todos los campos
+   - Consideración: el campo bodegaDestino es OBLIGATORIO
+
+6. **publicar_resumen(resumen)**
+   - Endpoint: `POST /panel/resumen`
+   - Valida y publica un resumen estructurado
+   - JSON contrato exacto con fecha, narrativa, alertas, accionesSugeridas
+   - Retorna el último resumen guardado o 404 si no existe
+
+# RESTRICTIONES OBLIGATORIAS (CRÍTICAS)
+
+## 1. Sin herramienta de aprobar órdenes
+- **Esta es una restricción obligatoria**: No existe una herramienta para aprobar órdenes en el MCP
+- El flujo n8n tampoco debe poder aprobar órdenes
+- Esta restricción está en el archivo SKILL.md también
+- El AGENTE no puede aprobar (retorna 403) - ya protegido en SecurityConfig
+
+## 2. Autenticación con rol AGENTE
+- Todas las herramientas MCP deben autenticarse como usuario con rol **AGENTE**
+- En SecurityConfig ya tengo: `.requestMatchers(HttpMethod.GET, "/api/kpis").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")` etc.
+- El MCP debe usar credenciales de un usuario AGENTE (no admin, no empleado)
+- Probar: AGENTE intenta aprobar orden → 403 Forbidden
+
+## 3. Sin conexión directa a mi SQL/PostgreSQL
+- El MCP NUNCA debe tener JDBC connections, queries directas, o acceso a tablas
+- Toda comunicación es SOLO mediante la API REST HTTP
+- El MCP es solo una capa de enrutamiento/transformación de requests
+
+## 4. Compatibilidad Supabase (bytea sin @Lob)
+- El campo pdfBytes en OrdenCompra ya tiene `columnDefinition = "bytea"` SIN `@Lob`
+- Esto evita el error "Value too long for column PDF_BYTES BINARY VARYING(255)" que fallaba en Supabase
+- El MCP al generar/leer PDFs debe esperar este tipo de dato en la API
+
+# ESTRUCTURA SOLICITADA (considerando Supabase)
+
+```
+mcp-server/
+  config.yaml        # configuración MCP con URL base de la API
+  server.py          # servidor MCP con las 6 herramientas usando requests/http
+  requirements.txt   # dependencias: flask/fastapi, requests
+  evidencia-herramientas.md  # tabla regla → prueba con entrada/salida
+  README.md          # instrucciones corriendo contra Supabase PostgreSQL
+```
+
+# ARCHIVE SKILL (skills/operacion-logitrack/SKILL.md)
+
+Considerando el proyecto actual y restricciones MCP:
+
+```
+# Skill: operacion-logitrack
+
+## Instrucciones para flujo automatizado:
+
+1. PRIMERO: Consultar riesgos y KPIs
+   - Ejecutar: consultar_productos_en_riesgo()
+   - Ejecutar: consultar_kpis()
+
+2. DECISIÓN: Si hay productos en riesgo:
+   - Si sí: crear como máximo UNA orden en borrador
+   - Si no: terminar sin crear órdenes
+
+3. CREAR ORDEN (solo si hay productos en riesgo):
+   - herramienta: crear_orden_borrador(
+       productoId: [primer producto en riesgo],
+       proveedorId: [proveeedor del producto, o null si no tiene],
+       bodegaDestinoId: [bodegaDestino sugerida del producto],
+       cantidad: ceil(max(1, puntoReorden × 2 - stockTotal)),
+       precioUnitario: [precioUnitario del producto]
+   )
+   - **IMPORTANTE**: Solo crear una orden por ejecución
+
+4. PUBLICAR RESUMEN:
+   - herramienta: publicar_resumen({
+       fecha: "YYYY-MM-DD actual en America/Bogota",
+       narrativa: "Hay productos en riesgo y una orden pendiente de aprobación.",
+       alertas: [severidad ALTA con producto en riesgo],
+       accionesSugeridas: [tipo REVISAR_ORDEN]
+     })
+
+5. MANEJO DE ERRORES:
+   - Si alguna herramienta falla: informar error específico
+   - Si no hay productos en riesgo: registrar éxito sin crear órdenes
+   - Si falla la creación de orden: registrar error y no publicar resumen
+
+# RESTRICCIONES OBLIGATORIAS EN SKILL:
+- ✓ Consultar primero riesgos y KPIs
+- ✓ Crear máximo una orden en borrador por ejecución
+- ✓ **No aprobar, cancelar ni recibir órdenes** - RESTRIPCIÓN OBLIGATORIA
+- ✓ Publicar solo un JSON que cumpla el contrato del resumen
+- ✓ Informar el error si una herramienta falla
+
+# FLUJO N8N (n8n/resumen-diario-inventario.json)
+
+Considerando flujo y restricciones MCP:
+
+1. **Schedule Trigger**: 6:00 a.m. en America/Bogota
+2. **Nodo AI Agent**: Usa herramientas MCP (las 6 definidas)
+3. **Pasos del flujo**:
+   a. Consultar KPIs (`consultar_kpis()`)
+   b. Consultar productos en riesgo (`consultar_productos_en_riesgo()`)
+   c. **Decision**: Si hay productos en riesgo:
+        - Crear orden en borrador para el PRIMER producto listado
+        - Cantidad: `ceil(max(1, puntoReorden × 2 - stockTotal))`
+        - La cantidad se calcula basándose en la fórmula del documento
+   d. Si NO hay productos en riesgo: saltar creación de orden
+   e. Publicar resumen del panel (`publicar_resumen()`)
+   f. Registrar salida: éxito o error en ejecución de n8n
+3. **Para demostración**: Ejecutar manualmente el flujo sin cambiar cronograma
+
+# ARCHIVO N8N EXPECTED
+```
+n8n/resumen-diario-inventario.json
+```
+Contiene la definición completa del flujo con Schedule Trigger, nodo AI Agent con las 6 herramientas MCP, y lógica de decisión.
+
+# INTEGRACIÓN CON SEGURIDAD ACTUAL (SecurityConfig.java)
+
+Considerando que ya tengo estas reglas en SecurityConfig:
+
+```java
+// Ya definidas - las herramientas MCP deben usar rol AGENTE
+.requestMatchers(HttpMethod.GET, "/api/kpis").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+.requestMatchers(HttpMethod.GET, "/api/productos/riesgo").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+.requestMatchers(HttpMethod.GET, "/api/bodegas/criticas").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+.requestMatchers(HttpMethod.GET, "/api/productos/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+.requestMatchers(HttpMethod.POST, "/api/ordenes/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+.requestMatchers(HttpMethod.POST, "/api/panel/resumen").hasAnyRole("ADMIN", "AGENTE")
+
+// RESTRICCIÓN: AGENTE no puede aprobar órdenes
+.requestMatchers(HttpMethod.PATCH, "/api/ordenes/**/estado").hasRole("ADMIN")
+
+// Ya tengo el usuario AGENTE configurado para pruebas
+```
+
+# PASOS PARA IMPLEMENTAR (orden sugerida)
+
+1. **Paso 1**: Crear `mcp-server/server.py` con las 6 herramientas usando HTTP requests al backend Spring Boot corriendo en Supabase
+2. **Paso 2**: Probar cada herramienta con curl contra la URL de Supabase
+3. **Paso 3**: Crear `skills/operacion-logitrack/SKILL.md` con las instrucciones consideringando las restricciones (sIN herramienta de aprobar)
+4. **Paso 4**: Crear `n8n/resumen-diario-inventario.json` con el flujo completo
+5. **Paso 5**: Probar el flujo completo manualmente
+
+# EVIDENCIA NECESARIA
+
+1. **mcp-server/evidencia-herramientas.md**: Tabla con 6 herramientas, petición de ejemplo y respuesta esperada para cada una
+2. **skills/operacion-logitrack/SKILL.md**: Archivo con instrucciones operativas
+3. **n8n/resumen-diario-inventario.json**: Flujo n8n completo
+4. **Test de seguridad**: Probar que AGENTE no puede aprobar órdenes (403)
+
+# PROBAR DESDE SUPABASE
+
+Considerando que la base es PostgreSQL en Supabase:
+- El backend corre en: `aws-1-us-west-2.pooler.supabase.com:5432/postgres`
+- Usuario: `postgres.jgdkvfffzdxbzrdvsggo`
+- La API REST ya está funcionando y las pruebas unitarias pasan con H2
+- El MCP debe conectarse a la URL: `https://proyecto-backend-url/api/...`
+- Las credenciales de AGENTE usuario deben tener role='AGENTE' en la base
