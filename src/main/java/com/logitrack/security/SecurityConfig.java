@@ -89,6 +89,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH, "/api/ordenes/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/ordenes/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
                 .requestMatchers(HttpMethod.POST, "/api/ordenes/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+                // KPIs y endpoints de riesgo/stock
+                .requestMatchers(HttpMethod.GET, "/api/kpis").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/productos/riesgo").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/productos/*/stock").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/bodegas/criticas").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/proveedores").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/**").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/*/pdf").hasAnyRole("ADMIN", "AGENTE")
+                .requestMatchers(HttpMethod.POST, "/api/ordenes/*/pdf").hasAnyRole("ADMIN", "AGENTE")
+                // Panel de resumen
+                .requestMatchers(HttpMethod.POST, "/api/panel/resumen").hasAnyRole("ADMIN", "AGENTE")
+                // Movimientos: solo ADMIN y EMPLEADO (AGENTE excluido explícitamente)
+                .requestMatchers(HttpMethod.POST, "/api/movimientos").hasAnyRole("ADMIN", "EMPLEADO")
                 // Demás API endpoints requieren autenticación
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()

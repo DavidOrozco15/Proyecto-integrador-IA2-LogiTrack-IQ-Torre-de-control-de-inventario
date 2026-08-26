@@ -79,15 +79,14 @@ public class AuthController {
             throw new BadRequestException("El correo electrónico ya está registrado.");
         }
 
-        if (registerRequest.getRol() == null) {
-            throw new BadRequestException("El rol es obligatorio. Valores permitidos: ADMIN, EMPLEADO.");
-        }
+        // FORZAR rol = EMPLEADO siempre en registro público
+        Rol rol = Rol.EMPLEADO;
 
         Usuario usuario = Usuario.builder()
                 .username(registerRequest.getUsername().trim())
                 .email(registerRequest.getEmail().trim().toLowerCase())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .rol(registerRequest.getRol())
+                .rol(rol)
                 .build();
 
         try {
