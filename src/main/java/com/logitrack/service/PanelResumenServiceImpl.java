@@ -3,6 +3,7 @@ package com.logitrack.service;
 import com.logitrack.dto.ResumenPanelRequest;
 import com.logitrack.exception.BadRequestException;
 import com.logitrack.model.ResumenPanel;
+import java.util.Optional;
 import com.logitrack.repository.AuditoriaRepository;
 import com.logitrack.repository.BodegaRepository;
 import com.logitrack.repository.OrdenCompraRepository;
@@ -62,5 +63,10 @@ public class PanelResumenServiceImpl implements PanelResumenService {
                 .build();
 
         resumenPanelRepository.save(resumen);
+    }
+
+    @Override
+    public Optional<ResumenPanel> obtenerUltimoResumen() {
+        return resumenPanelRepository.findTopByOrderByCreatedAtDesc();
     }
 }

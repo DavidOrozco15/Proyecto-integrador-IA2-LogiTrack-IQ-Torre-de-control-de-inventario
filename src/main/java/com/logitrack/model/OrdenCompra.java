@@ -51,7 +51,7 @@ public class OrdenCompra {
     @Column(nullable = false, length = 20)
     private EstadoOrdenCompra estado;
 
-    @Column(name = "pdf_bytes")
+    @Column(name = "pdf_bytes", columnDefinition = "bytea")
     private byte[] pdfBytes;
 
     @Column(nullable = false)
