@@ -1,0 +1,7 @@
+mcp:
+  name: "LogiTrack MCP Server"
+  version: "1.0.0"
+  api_base_url: "https://proyecto-backend-url/api"
+  timeout: 30
+  agente_username: "agente_user"
+  agente_password: "agente_pass"

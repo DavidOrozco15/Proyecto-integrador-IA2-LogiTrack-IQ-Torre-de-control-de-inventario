@@ -31,4 +31,6 @@ public interface ProductoService {
     List<ProductoConInventarioDTO> obtenerTodosConInventario();
 
     ProductoConInventarioDTO obtenerConInventarioPorId(Long id);
+
+    Map<String, Object> obtenerStockPorProducto(Long id);
 }

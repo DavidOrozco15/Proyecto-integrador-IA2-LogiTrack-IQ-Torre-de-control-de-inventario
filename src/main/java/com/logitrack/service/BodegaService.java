@@ -23,4 +23,6 @@ public interface BodegaService {
     List<InventarioBodega> obtenerInventarioPorBodega(Long bodegaId);
 
     List<StockPorBodegaDTO> obtenerStockTodas();
+
+    List<Bodega> obtenerCriticas();
 }

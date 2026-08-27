@@ -264,6 +264,30 @@ public class ProductoServiceImpl implements ProductoService {
         return ProductoConInventarioDTO.fromProducto(producto, inventarios);
     }
 
+    @Override
+    public Map<String, Object> obtenerStockPorProducto(Long id) {
+        Producto producto = obtenerPorId(id);
+        List<InventarioBodega> inventarios = inventarioBodegaRepository.findByProductoId(id);
+        
+        int stockTotal = inventarios.stream()
+                .mapToInt(InventarioBodega::getStock)
+                .sum();
+        
+        Map<String, Object> result = Map.of(
+                "productoId", producto.getId(),
+                "productoNombre", producto.getNombre(),
+                "stockTotal", stockTotal,
+                "stockPorBodega", inventarios.stream()
+                        .collect(Collectors.toMap(
+                                inv -> inv.getBodega().getId().toString(),
+                                inv -> inv.getStock(),
+                                (a, b) -> a
+                        ))
+        );
+        
+        return result;
+    }
+
     private void guardarAuditoria(TipoOperacion tipo, Producto producto, String valoresAnteriores, String valoresNuevos) {
         try {
             String username = UserContext.getUsername();

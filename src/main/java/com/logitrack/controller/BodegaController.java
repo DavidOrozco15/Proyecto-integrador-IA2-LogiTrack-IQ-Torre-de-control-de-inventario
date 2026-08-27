@@ -32,6 +32,11 @@ public class BodegaController {
         return ResponseEntity.ok(bodegaService.obtenerStockTodas());
     }
 
+    @GetMapping("/criticas")
+    public ResponseEntity<List<Bodega>> obtenerCriticas() {
+        return ResponseEntity.ok(bodegaService.obtenerCriticas());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Bodega> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(bodegaService.obtenerPorId(id));

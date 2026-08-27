@@ -1,0 +1,197 @@
+{
+  "name": "resumen-diario-inventario",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 6 * * *",
+        "timezone": "America/Bogota"
+      },
+      "type": "n8n-nodes-base.cron",
+      "position": [100, 0],
+      "name": "Programador 6:00 am"
+    },
+    {
+      "parameters": {
+        "resources": [
+          {
+            "resource": "executeAPI",
+            "operation": "post"
+          }
+        ],
+        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/kpis",
+        "method": "GET",
+        "authentication": "none",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
+          }
+        ]
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [300, 0],
+      "name": "consultar_kpis"
+    },
+    {
+      "parameters": {
+        "resources": [
+          {
+            "resource": "executeAPI",
+            "operation": "post"
+          }
+        ],
+        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/productos/riesgo",
+        "method": "GET",
+        "authentication": "none",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
+          }
+        ]
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [300, 200],
+      "name": "consultar_productos_en_riesgo"
+    },
+    {
+      "parameters": {
+        "apiKey": "",
+        "outputDataType": "json",
+        "model": "gpt-4o-mini",
+        "systemMessage": "Eres un agente de inventario para LogiTrack. Usa las herramientas MCP para consultar stock, riesgos y KPIs. No apruebes ordenes, solo creates en borrador cuando sea necesario.",
+        "temperature": 0.1,
+        "maxTokens": 2000
+      },
+      "type": "n8n-nodes-base.aiAgent",
+      "position": [500, 100],
+      "name": "Nodo AI Agent"
+    },
+    {
+      "parameters": {
+        "resources": [
+          {
+            "resource": "executeAPI",
+            "operation": "post"
+          }
+        ],
+        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/ordenes",
+        "method": "POST",
+        "authentication": "none",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
+          }
+        ],
+        "options": {
+          "bodyContent": "json",
+          "jsonParameters": true,
+          "rawBody": "{\"productoId\": {{ $json[\"productoId\"] }}, \"proveedorId\": {{ $json[\"proveedorId\"] }}, \"bodegaDestinoId\": {{ $json[\"bodegaDestinoId\"] }}, \"cantidad\": {{ $json[\"cantidad\"] }}, \"precioUnitario\": {{ $json[\"precioUnitario\"] }}}"
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 200],
+      "name": "crear_orden_borrador"
+    },
+    {
+      "parameters": {
+        "resources": [
+          {
+            "resource": "executeAPI",
+            "operation": "post"
+          }
+        ],
+        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/panel/resumen",
+        "method": "POST",
+        "authentication": "none",
+        "headerParameters": [
+          {
+            "name": "Authorization",
+            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
+          }
+        ],
+        "options": {
+          "bodyContent": "json",
+          "jsonParameters": true,
+          "rawBody": "{\"fecha\": \"{{$now.format('YYYY-MM-DD')}}\", \"narrativa\": \"Hay productos en riesgo y una orden pendiente de aprobacion.\", \"alertas\": [{\"severidad\": \"ALTA\"}], \"accionesSugeridas\": [{\"tipo\": \"REVISAR_ORDEN\"}]}"
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 400],
+      "name": "publicar_resumen"
+    }
+  ],
+  "connections": {
+    "Programador 6:00 am": {
+      "main": [
+        [
+          {
+            "node": "consultar_kpis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_kpis": {
+      "main": [
+        [
+          {
+            "node": "consultar_productos_en_riesgo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_productos_en_riesgo": {
+      "main": [
+        [
+          {
+            "node": "Nodo AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nodo AI Agent": {
+      "main": [
+        [
+          {
+            "node": "crear_orden_borrador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crear_orden_borrador": {
+      "main": [
+        [
+          {
+            "node": "publicar_resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "publicar_resumen": {
+      "main": [
+        [
+          {
+            "node": "Programador 6:00 am",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "sequential"
+  }
+}

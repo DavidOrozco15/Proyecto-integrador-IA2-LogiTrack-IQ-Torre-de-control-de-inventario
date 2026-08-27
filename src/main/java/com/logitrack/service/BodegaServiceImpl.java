@@ -162,6 +162,20 @@ public class BodegaServiceImpl implements BodegaService {
         }).collect(Collectors.toList());
     }
 
+    @Override
+    public List<Bodega> obtenerCriticas() {
+        List<Bodega> bodegas = bodegaRepository.findAll();
+        return bodegas.stream()
+                .filter(b -> {
+                    Integer stockTotal = inventarioBodegaRepository.sumStockByBodegaId(b.getId());
+                    Integer capacidad = b.getCapacidad();
+                    if (capacidad == null || capacidad == 0) return false;
+                    double porcentaje = (stockTotal != null ? stockTotal.longValue() : 0) * 100.0 / capacidad;
+                    return porcentaje >= 90.0;
+                })
+                .collect(Collectors.toList());
+    }
+
     private void guardarAuditoria(TipoOperacion tipo, Bodega bodega, String valoresAnteriores, String valoresNuevos) {
         try {
             String username = UserContext.getUsername();

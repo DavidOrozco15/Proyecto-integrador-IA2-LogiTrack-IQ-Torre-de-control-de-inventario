@@ -1,0 +1,12 @@
+# Evidencia de Herramientas MCP
+
+Tabla de las 6 herramientas obligatorias con peticiones de ejemplo y respuestas esperadas.
+
+| # | Herramienta | Endpoint | Método | Parámetros | Respuesta Esperada |
+|---|-------------|----------|--------|-----------|-------------------|
+| 1 | consultar_stock_producto | `/api/productos/{id}/stock` | GET | `productoId: 1` | `{ "productoId": 1, "nombre": "Producto A", "stockActual": 15, "capacidadMaxima": 50, "umbralReorden": 10, "detalle": "stock disponible" }` |
+| 2 | consultar_bodegas_criticas | `/api/bodegas/criticas` | GET | Ninguno | `[{ "bodegaId": 1, "nombre": "Bogotá", "unidades": 45, "capacidad": 50, "porcentaje": 90.0 }]` |
+| 3 | consultar_productos_en_riesgo | `/api/productos/riesgo` | GET | Ninguno | `[{ "productoId": 1, "nombre": "Producto A", "proveedorId": 5, "stockTotal": 3, "consumoDiarioPromedio": 1, "puntoReorden": 10, "diasCobertura": 10, "estadoCobertura": "CRITICO", "bodegaDestinoId": 3 }]` |
+| 4 | consultar_kpis | `/api/kpis` | GET | Ninguno | `{ "calculadoEn": "2026-08-24T06:00:00-05:00", "ocupacionPorBodega": [{ "bodegaId": 1, "nombre": "Bogota", "porcentaje": 92.5 }], "productosEnQuiebre": 1, "productosEnRiesgo": 2, "ordenesPorAprobar": { "cantidad": 1, "montoTotal": 45000.0 }, "movimientosAyer": { "entrada": 2, "salida": 3, "transferencia": 1 } }` |
+| 5 | crear_orden_borrador | `/api/ordenes` | POST | `{ "productoId": 1, "proveedorId": 5, "bodegaDestinoId": 3, "cantidad": 17, "precioUnitario": 25000.0 }` | `{ "ordenId": 100, "estado": "BORRADOR", "productoId": 1, "proveedorId": 5, "bodegaDestinoId": 3, "cantidad": 17, "precioUnitario": 25000.0, "total": 425000.0, "fechaCreacion": "2026-08-24T06:00:00-05:00" }` |
+| 6 | publicar_resumen | `/api/panel/resumen` | POST | `{ "fecha": "2026-08-24", "narrativa": "Hay productos en riesgo y una orden pendiente de aprobación.", "alertas": [{"severidad": "ALTA", "mensaje": "Producto en riesgo"}], "accionesSugeridas": [{"tipo": "REVISAR_ORDEN"}] }` | `{ "id": 1, "fecha": "2026-08-24", "narrativa": "Hay productos en riesgo y una orden pendiente de aprobación.", "alertas": [{"severidad": "ALTA", "mensaje": "Producto en riesgo"}], "accionesSugeridas": [{"tipo": "REVISAR_ORDEN"}], "usuario": "agente" }|
