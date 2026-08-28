@@ -3,10 +3,6 @@
  * Torre de Control de Inventario
  */
 
-// ========================================
-// Configuration & Constants
-// ========================================
-
 const API_BASE = '/api';
 const TOKEN_KEY = 'logitrack_token';
 const USER_KEY = 'logitrack_user';
@@ -15,303 +11,192 @@ const ENDPOINTS = {
     login: `${API_BASE}/auth/login`,
     kpis: `${API_BASE}/kpis`,
     productosRiesgo: `${API_BASE}/productos/riesgo`,
-    ordenesBorrador: `${API_BASE}/ordenes?estado=BORRADOR`,
+    ordenes: `${API_BASE}/ordenes`,
     resumen: `${API_BASE}/panel/resumen`,
-    ocupacion: `${API_BASE}/bodegas/criticas`,
+    bodegas: `${API_BASE}/bodegas`,
+    bodegasStock: `${API_BASE}/bodegas/stock`,
     proveedores: `${API_BASE}/proveedores`,
     ordenPdf: (id) => `${API_BASE}/ordenes/${id}/pdf`,
     ordenEstado: (id) => `${API_BASE}/ordenes/${id}/estado`,
 };
 
-// ========================================
-// State Management
-// ========================================
-
 let state = {
     token: null,
     user: null,
     currentPage: 'dashboard',
+    currentOrderFilter: 'BORRADOR',
     data: {
         kpis: null,
         productosRiesgo: [],
-        ordenesBorrador: [],
+        ordenes: [],
         resumen: null,
-        ocupacion: [],
+        bodegas: [],
     }
 };
 
 // ========================================
-// Utility Functions
+// Utilities
 // ========================================
 
-function formatCurrency(value) {
-    if (value == null) return '--';
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
+function formatCurrency(v) {
+    if (v == null) return '--';
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
 }
 
-function formatNumber(value) {
-    if (value == null) return '--';
-    return new Intl.NumberFormat('es-CO').format(value);
+function formatNumber(v) {
+    if (v == null) return '--';
+    return new Intl.NumberFormat('es-CO').format(v);
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '--';
+function formatDate(d) {
+    if (!d) return '--';
     try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-CO', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    } catch {
-        return dateString;
-    }
+        return new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch { return d; }
 }
 
-function formatDateOnly(dateString) {
-    if (!dateString) return '--';
+function formatDateOnly(d) {
+    if (!d) return '--';
     try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-CO', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
-    } catch {
-        return dateString;
-    }
+        return new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch { return d; }
 }
 
-function getEstadoClass(estado) {
-    const classes = {
-        'BORRADOR': 'badge-warning',
-        'APROBADA': 'badge-info',
-        'RECIBIDA': 'badge-success',
-        'CANCELADA': 'badge-danger',
-        'PENDIENTE': 'badge-info',
-        'EN_RIESGO': 'badge-danger',
-        'CRITICO': 'badge-danger',
-        'SIN_CONSUMO': 'badge-secondary',
-    };
-    return classes[estado] || 'badge-secondary';
+function getEstadoClass(e) {
+    return { BORRADOR: 'badge-warning', APROBADA: 'badge-info', RECIBIDA: 'badge-success', CANCELADA: 'badge-danger', PENDIENTE: 'badge-info', EN_RIESGO: 'badge-danger', CRITICO: 'badge-danger', SIN_CONSUMO: 'badge-secondary' }[e] || 'badge-secondary';
 }
 
-function getSeverityClass(severidad) {
-    const classes = {
-        'ALTA': 'badge-danger',
-        'MEDIA': 'badge-warning',
-        'BAJA': 'badge-info',
-    };
-    return classes[severidad] || 'badge-secondary';
+function getSeverityClass(s) {
+    return { ALTA: 'badge-danger', MEDIA: 'badge-warning', BAJA: 'badge-info' }[s] || 'badge-secondary';
 }
 
-function getAccionClass(tipo) {
-    const classes = {
-        'REVISAR_ORDEN': 'badge-primary',
-        'REVISAR_PRODUCTO': 'badge-warning',
-        'REVISAR_BODEGA': 'badge-info',
-    };
-    return classes[tipo] || 'badge-secondary';
+function getAccionClass(t) {
+    return { REVISAR_ORDEN: 'badge-primary', REVISAR_PRODUCTO: 'badge-warning', REVISAR_BODEGA: 'badge-info' }[t] || 'badge-secondary';
+}
+
+function getOccupancyClass(pct) {
+    if (pct >= 90) return 'red';
+    if (pct >= 70) return 'yellow';
+    return 'green';
+}
+
+function getOccupancyLabel(pct) {
+    if (pct >= 90) return 'CRITICA';
+    if (pct >= 70) return 'ALTA';
+    return 'NORMAL';
 }
 
 // ========================================
-// Auth & Token Management
+// Auth
 // ========================================
 
 function getToken() {
-    if (!state.token) {
-        state.token = sessionStorage.getItem(TOKEN_KEY);
-    }
+    if (!state.token) state.token = sessionStorage.getItem(TOKEN_KEY);
     return state.token;
 }
 
-function setToken(token) {
-    state.token = token;
-    if (token) {
-        sessionStorage.setItem(TOKEN_KEY, token);
-    } else {
-        sessionStorage.removeItem(TOKEN_KEY);
-    }
+function setToken(t) {
+    state.token = t;
+    t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY);
 }
 
 function getUser() {
     if (!state.user) {
-        const userStr = sessionStorage.getItem(USER_KEY);
-        if (userStr) {
-            try {
-                state.user = JSON.parse(userStr);
-            } catch {
-                sessionStorage.removeItem(USER_KEY);
-            }
-        }
+        const s = sessionStorage.getItem(USER_KEY);
+        if (s) try { state.user = JSON.parse(s); } catch { sessionStorage.removeItem(USER_KEY); }
     }
     return state.user;
 }
 
-function setUser(user) {
-    state.user = user;
-    if (user) {
-        sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-    } else {
-        sessionStorage.removeItem(USER_KEY);
-    }
+function setUser(u) {
+    state.user = u;
+    u ? sessionStorage.setItem(USER_KEY, JSON.stringify(u)) : sessionStorage.removeItem(USER_KEY);
 }
 
-function clearAuth() {
-    setToken(null);
-    setUser(null);
-    state.user = null;
-}
-
-function isAuthenticated() {
-    return !!getToken();
-}
-
-function getUserRole() {
-    const user = getUser();
-    return user?.rol || null;
-}
-
-function hasRole(...roles) {
-    const role = getUserRole();
-    return roles.includes(role);
-}
+function clearAuth() { setToken(null); setUser(null); }
+function isAuthenticated() { return !!getToken(); }
+function getUserRole() { return getUser()?.rol || null; }
+function hasRole(...r) { return r.includes(getUserRole()); }
 
 // ========================================
 // API Client
 // ========================================
 
-async function apiRequest(url, options = {}) {
+async function apiRequest(url, opts = {}) {
     const token = getToken();
-    
-    const defaultHeaders = {
-        'Content-Type': 'application/json',
-    };
-    
-    if (token) {
-        defaultHeaders['Authorization'] = `Bearer ${token}`;
-    }
-    
-    const config = {
-        headers: { ...defaultHeaders, ...options.headers },
-        ...options,
-    };
-    
-    try {
-        const response = await fetch(url, config);
-        
-        if (response.status === 401) {
-            clearAuth();
-            window.location.href = 'login.html';
-            throw new Error('Sesión expirada');
-        }
-        
-        if (response.status === 403) {
-            throw new Error('No tiene permisos para realizar esta acción');
-        }
-        
-        if (response.status === 404) {
-            throw new Error('Recurso no encontrado');
-        }
-        
-        const contentType = response.headers.get('content-type');
-        let data;
-        
-        if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
-        } else if (contentType && contentType.includes('application/pdf')) {
-            data = await response.blob();
-        } else {
-            data = await response.text();
-        }
-        
-        if (!response.ok) {
-            const message = data?.message || data?.error || `Error ${response.status}`;
-            throw new Error(message);
-        }
-        
-        return data;
-    } catch (error) {
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error('No se puede conectar al servidor');
-        }
-        throw error;
-    }
+    const headers = { 'Content-Type': 'application/json', ...opts.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, { ...opts, headers });
+
+    if (res.status === 401) { clearAuth(); window.location.href = 'login.html'; throw new Error('Sesion expirada'); }
+    if (res.status === 403) throw new Error('No tiene permisos para realizar esta accion');
+    if (res.status === 404) throw new Error('Recurso no encontrado');
+
+    const ct = res.headers.get('content-type');
+    let data;
+    if (ct && ct.includes('application/json')) data = await res.json();
+    else if (ct && ct.includes('application/pdf')) data = await res.blob();
+    else data = await res.text();
+
+    if (!res.ok) throw new Error(data?.message || data?.error || `Error ${res.status}`);
+    return data;
 }
 
 // ========================================
-// Login Functions
+// Auth Functions
 // ========================================
 
 async function login(username, password) {
-    const response = await apiRequest(ENDPOINTS.login, {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-    });
-    
-    const { token, userId, username: userName, email, rol } = response;
-    
-    setToken(token);
-    setUser({ id: userId, username: userName, email, rol });
-    
-    return response;
+    const r = await apiRequest(ENDPOINTS.login, { method: 'POST', body: JSON.stringify({ username, password }) });
+    setToken(r.token);
+    setUser({ id: r.userId, username: r.username, email: r.email, rol: r.rol });
+    return r;
 }
 
-function logout() {
-    clearAuth();
-    window.location.href = 'login.html';
-}
+function logout() { clearAuth(); window.location.href = 'login.html'; }
 
 // ========================================
 // Data Fetching
 // ========================================
 
 async function fetchKPIs() {
-    const data = await apiRequest(ENDPOINTS.kpis);
-    state.data.kpis = data;
-    return data;
+    const d = await apiRequest(ENDPOINTS.kpis);
+    state.data.kpis = d;
+    return d;
 }
 
 async function fetchProductosRiesgo() {
-    const data = await apiRequest(ENDPOINTS.productosRiesgo);
-    state.data.productosRiesgo = data || [];
+    const d = await apiRequest(ENDPOINTS.productosRiesgo);
+    state.data.productosRiesgo = d || [];
     return state.data.productosRiesgo;
 }
 
-async function fetchOrdenesBorrador() {
-    const data = await apiRequest(ENDPOINTS.ordenesBorrador);
-    state.data.ordenesBorrador = data || [];
-    return state.data.ordenesBorrador;
+async function fetchOrdenes(estado) {
+    const url = estado ? `${ENDPOINTS.ordenes}?estado=${estado}` : ENDPOINTS.ordenes;
+    const d = await apiRequest(url);
+    state.data.ordenes = d || [];
+    return state.data.ordenes;
 }
 
 async function fetchResumen() {
     try {
-        const data = await apiRequest(ENDPOINTS.resumen);
-        state.data.resumen = data;
-        return data;
-    } catch (error) {
-        if (error.message.includes('404')) {
-            state.data.resumen = null;
-            return null;
-        }
-        throw error;
+        const d = await apiRequest(ENDPOINTS.resumen);
+        state.data.resumen = d;
+        return d;
+    } catch (e) {
+        if (e.message.includes('404')) { state.data.resumen = null; return null; }
+        throw e;
     }
 }
 
-async function fetchOcupacion() {
+async function fetchBodegasStock() {
     try {
-        const data = await apiRequest(ENDPOINTS.ocupacion);
-        state.data.ocupacion = data || [];
-        return state.data.ocupacion;
+        const d = await apiRequest(ENDPOINTS.bodegasStock);
+        state.data.bodegas = d || [];
+        return state.data.bodegas;
     } catch {
-        state.data.ocupacion = [];
+        state.data.bodegas = [];
         return [];
     }
 }
@@ -320,28 +205,32 @@ async function fetchAllDashboardData() {
     await Promise.allSettled([
         fetchKPIs(),
         fetchProductosRiesgo(),
-        fetchOrdenesBorrador(),
+        fetchOrdenes(state.currentOrderFilter),
         fetchResumen(),
-        fetchOcupacion(),
+        fetchBodegasStock(),
     ]);
 }
 
 // ========================================
-// PDF Functions
+// PDF Functions - POST first, then GET
 // ========================================
 
-async function generateOrderPdf(orderId) {
-    const blob = await apiRequest(ENDPOINTS.ordenPdf(orderId), {
-        method: 'POST',
-    });
-    return blob;
-}
+async function generateAndOpenPdf(orderId) {
+    const btn = document.querySelector(`.btn-pdf[data-id="${orderId}"]`);
+    const originalHtml = btn?.innerHTML;
+    if (btn) { btn.innerHTML = '<span class="btn-loader" style="display:block"></span>'; btn.disabled = true; }
 
-async function viewOrderPdf(orderId) {
-    const blob = await apiRequest(ENDPOINTS.ordenPdf(orderId), {
-        method: 'GET',
-    });
-    return blob;
+    try {
+        // Step 1: POST to generate PDF bytes and save them
+        await apiRequest(ENDPOINTS.ordenPdf(orderId), { method: 'POST' });
+        // Step 2: GET to retrieve the generated PDF
+        const blob = await apiRequest(ENDPOINTS.ordenPdf(orderId), { method: 'GET' });
+        openPdfInModal(blob, orderId);
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        if (btn) { btn.innerHTML = originalHtml; btn.disabled = false; }
+    }
 }
 
 function openPdfInModal(blob, orderId) {
@@ -349,18 +238,18 @@ function openPdfInModal(blob, orderId) {
     const frame = document.getElementById('pdfFrame');
     const modal = document.getElementById('pdfModal');
     const title = document.getElementById('pdfOrderId');
-    const downloadBtn = document.getElementById('downloadPdfBtn');
-    
+    const dlBtn = document.getElementById('downloadPdfBtn');
+
     frame.src = url;
     title.textContent = `#${orderId}`;
-    
-    downloadBtn.onclick = () => {
+
+    dlBtn.onclick = () => {
         const a = document.createElement('a');
         a.href = url;
         a.download = `orden-${orderId}.pdf`;
         a.click();
     };
-    
+
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
@@ -368,13 +257,13 @@ function openPdfInModal(blob, orderId) {
 function closePdfModal() {
     const modal = document.getElementById('pdfModal');
     const frame = document.getElementById('pdfFrame');
-    
+    const url = frame.src;
     modal.classList.add('hidden');
     frame.src = 'about:blank';
     document.body.style.overflow = '';
-    
-    // Clean up object URL after a delay
-    setTimeout(() => URL.revokeObjectURL(frame.src), 100);
+    if (url && url !== 'about:blank') {
+        setTimeout(() => URL.revokeObjectURL(url), 200);
+    }
 }
 
 // ========================================
@@ -382,123 +271,118 @@ function closePdfModal() {
 // ========================================
 
 async function aprobarOrden(orderId) {
-    const data = await apiRequest(ENDPOINTS.ordenEstado(orderId), {
-        method: 'PATCH',
-        body: JSON.stringify({ estado: 'APROBADA' }),
-    });
-    return data;
+    return apiRequest(ENDPOINTS.ordenEstado(orderId), { method: 'PATCH', body: JSON.stringify({ estado: 'APROBADA' }) });
 }
 
 // ========================================
-// UI Rendering Functions
+// UI Rendering
 // ========================================
+
+function animateValue(el, end) {
+    if (end == null || isNaN(end)) { el.textContent = '--'; return; }
+    const start = parseInt(el.textContent) || 0;
+    if (start === end) { el.textContent = formatNumber(end); return; }
+    const duration = 800;
+    const startTime = performance.now();
+    function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = formatNumber(Math.round(start + (end - start) * eased));
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 
 function renderKPIs() {
     const kpis = state.data.kpis;
-    
     if (!kpis) {
         ['kpiProductosRiesgo', 'kpiProductosQuiebre', 'kpiOrdenesAprobar', 'kpiBodegasCriticas']
-            .forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = '--';
-            });
+            .forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '--'; });
         return;
     }
-    
-    const elRiesgo = document.getElementById('kpiProductosRiesgo');
-    const elQuiebre = document.getElementById('kpiProductosQuiebre');
-    const elOrdenes = document.getElementById('kpiOrdenesAprobar');
-    const elBodegas = document.getElementById('kpiBodegasCriticas');
-    
-    if (elRiesgo) elRiesgo.textContent = formatNumber(kpis.productosEnRiesgo);
-    if (elQuiebre) elQuiebre.textContent = formatNumber(kpis.productosEnQuiebre);
-    
-    if (elOrdenes) {
-        const ordenes = kpis.ordenesPorAprobar || {};
-        elOrdenes.textContent = `${formatNumber(ordenes.cantidad)} (${formatCurrency(ordenes.montoTotal)})`;
+
+    const elR = document.getElementById('kpiProductosRiesgo');
+    const elQ = document.getElementById('kpiProductosQuiebre');
+    const elO = document.getElementById('kpiOrdenesAprobar');
+    const elB = document.getElementById('kpiBodegasCriticas');
+
+    if (elR) animateValue(elR, kpis.productosEnRiesgo || 0);
+    if (elQ) animateValue(elQ, kpis.productosEnQuiebre || 0);
+
+    if (elO) {
+        const o = kpis.ordenesPorAprobar || {};
+        elO.textContent = `${formatNumber(o.cantidad || 0)}`;
+        elO.title = `Monto total: ${formatCurrency(o.montoTotal)}`;
     }
-    
-    if (elBodegas) elBodegas.textContent = formatNumber(
-        kpis.ocupacionPorBodega?.filter(b => b.porcentaje >= 90).length || 0
-    );
+
+    if (elB) {
+        const bodegas = kpis.ocupacionPorBodega || [];
+        const criticas = bodegas.filter(b => b.porcentaje >= 90).length;
+        animateValue(elB, criticas);
+    }
 }
 
 function renderMovimientosAyer() {
-    const kpis = state.data.kpis;
-    const movimientos = kpis?.movimientosAyer || {};
-    
-    const elEntradas = document.getElementById('movEntradas');
-    const elSalidas = document.getElementById('movSalidas');
-    const elTransferencias = document.getElementById('movTransferencias');
-    const elDate = document.getElementById('ayerDate');
-    
-    if (elEntradas) elEntradas.textContent = formatNumber(movimientos.entrada);
-    if (elSalidas) elSalidas.textContent = formatNumber(movimientos.salida);
-    if (elTransferencias) elTransferencias.textContent = formatNumber(movimientos.transferencia);
-    
-    if (elDate && kpis?.calculadoEn) {
-        const date = new Date(kpis.calculadoEn);
-        const ayer = new Date(date);
+    const m = state.data.kpis?.movimientosAyer || {};
+    const elE = document.getElementById('movEntradas');
+    const elS = document.getElementById('movSalidas');
+    const elT = document.getElementById('movTransferencias');
+    const elD = document.getElementById('ayerDate');
+
+    if (elE) animateValue(elE, m.entrada || 0);
+    if (elS) animateValue(elS, m.salida || 0);
+    if (elT) animateValue(elT, m.transferencia || 0);
+
+    if (elD && state.data.kpis?.calculadoEn) {
+        const d = new Date(state.data.kpis.calculadoEn);
+        const ayer = new Date(d);
         ayer.setDate(ayer.getDate() - 1);
-        elDate.textContent = ayer.toLocaleDateString('es-CO', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
+        elD.textContent = ayer.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
 }
 
 function renderOcupacion() {
     const tbody = document.getElementById('ocupacionBody');
     if (!tbody) return;
-    
-    const ocupacion = state.data.ocupacion || [];
-    
-    if (ocupacion.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="empty-state" style="padding: 32px;">
-                    <p>No hay datos de ocupación disponibles</p>
-                </td>
-            </tr>
-        `;
+
+    const bodegas = state.data.bodegas || [];
+
+    if (bodegas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="padding:32px"><p>No hay datos de ocupacion disponibles</p></td></tr>`;
         return;
     }
-    
-    tbody.innerHTML = ocupacion.map(b => {
-        const porcentaje = b.porcentajeOcupacion || 0;
-        const isCritica = porcentaje >= 90;
-        const badgeClass = isCritica ? 'badge-danger' : (porcentaje >= 70 ? 'badge-warning' : 'badge-success');
-        
+
+    tbody.innerHTML = bodegas.map((b, i) => {
+        const pct = b.porcentajeOcupacion || 0;
+        const cls = getOccupancyClass(pct);
+        const label = getOccupancyLabel(pct);
         return `
-            <tr>
+            <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both">
                 <td><strong>${b.bodegaNombre || `Bodega ${b.bodegaId}`}</strong></td>
                 <td>${formatNumber(b.stockTotal)}</td>
                 <td>${formatNumber(b.capacidad)}</td>
                 <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="flex: 1; height: 8px; background: var(--color-bg); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${Math.min(porcentaje, 100)}%; height: 100%; background: ${isCritica ? 'var(--color-danger)' : (porcentaje >= 70 ? 'var(--color-warning)' : 'var(--color-success)')}; transition: width 0.3s ease;"></div>
+                    <div class="progress-bar">
+                        <div class="progress-track">
+                            <div class="progress-fill ${cls}" style="width:${Math.min(pct, 100)}%"></div>
                         </div>
-                        <span class="badge ${badgeClass}" style="font-size: 11px; white-space: nowrap;">${porcentaje.toFixed(1)}%</span>
+                        <span class="badge badge-${cls === 'red' ? 'danger' : cls === 'yellow' ? 'warning' : 'success'}">${pct.toFixed(1)}%</span>
                     </div>
                 </td>
-                <td><span class="badge ${badgeClass}">${isCritica ? 'CRÍTICA' : (porcentaje >= 70 ? 'ALTA' : 'NORMAL')}</span></td>
-            </tr>
-        `;
+                <td><span class="badge badge-${cls === 'red' ? 'danger' : cls === 'yellow' ? 'warning' : 'success'}">${label}</span></td>
+            </tr>`;
     }).join('');
 }
 
 function renderResumen() {
-    const container = document.getElementById('resumenContent');
-    const fechaEl = document.getElementById('resumenFecha');
-    const resumen = state.data.resumen;
-    
-    if (!container) return;
-    
-    if (!resumen) {
-        container.innerHTML = `
+    const c = document.getElementById('resumenContent');
+    const fEl = document.getElementById('resumenFecha');
+    const r = state.data.resumen;
+    if (!c) return;
+
+    if (!r) {
+        c.innerHTML = `
             <div class="empty-state">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -508,135 +392,118 @@ function renderResumen() {
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
                 <p>No hay resumen publicado para hoy</p>
-                <small>El flujo n8n publica automáticamente a las 6:00 AM</small>
-            </div>
-        `;
-        if (fechaEl) fechaEl.textContent = 'Sin publicar';
+                <small>El flujo n8n publica automaticamente a las 6:00 AM</small>
+            </div>`;
+        if (fEl) fEl.textContent = 'Sin publicar';
         return;
     }
-    
-    if (fechaEl) {
-        fechaEl.textContent = formatDateOnly(resumen.fecha);
-        fechaEl.className = 'badge badge-info';
-    }
-    
+
+    if (fEl) { fEl.textContent = formatDateOnly(r.fecha); fEl.className = 'badge badge-info'; }
+
     let alertasHtml = '';
-    if (resumen.alertas && resumen.alertas.length > 0) {
-        alertasHtml = resumen.alertas.map(a => `
+    if (r.alertas?.length) {
+        alertasHtml = `<div class="resumen-section"><h4>Alertas</h4><div class="alertas-list">${r.alertas.map(a => `
             <div class="alerta-item">
-                <div class="alerta-header">
-                    <span class="badge ${getSeverityClass(a.severidad)}">${a.severidad}</span>
-                    <strong>${a.titulo}</strong>
-                </div>
+                <div class="alerta-header"><span class="badge ${getSeverityClass(a.severidad)}">${a.severidad}</span><strong>${a.titulo}</strong></div>
                 <p class="alerta-detalle">${a.detalle}</p>
                 <div class="alerta-refs">
                     ${a.productoId ? `<span class="ref">Producto: #${a.productoId}</span>` : ''}
                     ${a.ordenId ? `<span class="ref">Orden: #${a.ordenId}</span>` : ''}
                     ${a.bodegaId ? `<span class="ref">Bodega: #${a.bodegaId}</span>` : ''}
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('')}</div></div>`;
     }
-    
+
     let accionesHtml = '';
-    if (resumen.accionesSugeridas && resumen.accionesSugeridas.length > 0) {
-        accionesHtml = resumen.accionesSugeridas.map(a => `
+    if (r.accionesSugeridas?.length) {
+        accionesHtml = `<div class="resumen-section"><h4>Acciones Sugeridas</h4><div class="acciones-list">${r.accionesSugeridas.map(a => `
             <div class="accion-item">
                 <span class="badge ${getAccionClass(a.tipo)}">${a.tipo}</span>
                 <span>${a.descripcion}</span>
                 ${a.ordenId ? `<span class="ref">Orden: #${a.ordenId}</span>` : ''}
                 ${a.productoId ? `<span class="ref">Producto: #${a.productoId}</span>` : ''}
                 ${a.bodegaId ? `<span class="ref">Bodega: #${a.bodegaId}</span>` : ''}
-            </div>
-        `).join('');
+            </div>`).join('')}</div></div>`;
     }
-    
-    container.innerHTML = `
+
+    c.innerHTML = `
         <div class="resumen-card">
-            <div class="resumen-narrativa">
-                <h4>Narrativa</h4>
-                <p>${resumen.narrativa}</p>
-            </div>
-            ${alertasHtml ? `
-                <div class="resumen-section">
-                    <h4>Alertas</h4>
-                    <div class="alertas-list">${alertasHtml}</div>
-                </div>
-            ` : ''}
-            ${accionesHtml ? `
-                <div class="resumen-section">
-                    <h4>Acciones Sugeridas</h4>
-                    <div class="acciones-list">${accionesHtml}</div>
-                </div>
-            ` : ''}
-        </div>
-    `;
+            <div class="resumen-narrativa"><h4>Narrativa</h4><p>${r.narrativa}</p></div>
+            ${alertasHtml}${accionesHtml}
+        </div>`;
 }
 
-function renderOrdenesBorrador() {
+function renderOrdenes() {
     const tbody = document.getElementById('ordenesBody');
     const emptyEl = document.getElementById('ordenesEmpty');
     const table = document.getElementById('ordenesTable');
-    const ordenes = state.data.ordenesBorrador || [];
+    const ordenes = state.data.ordenes || [];
     const isAdmin = hasRole('ADMIN');
-    
+
     if (!tbody || !emptyEl || !table) return;
-    
+
     if (ordenes.length === 0) {
         tbody.innerHTML = '';
         table.style.display = 'none';
         emptyEl.classList.remove('hidden');
         return;
     }
-    
+
     table.style.display = 'table';
     emptyEl.classList.add('hidden');
-    
-    tbody.innerHTML = ordenes.map(o => `
-        <tr data-id="${o.id}">
+
+    tbody.innerHTML = ordenes.map((o, i) => `
+        <tr data-id="${o.id}" style="animation: slideUp 0.3s ease ${i * 0.04}s both">
             <td><strong>#${o.id}</strong></td>
             <td>${o.producto?.nombre || `Producto #${o.productoId}`}</td>
-            <td>${o.proveedor?.nombre || (o.proveedorId ? `#${o.proveedorId}` : '—')}</td>
+            <td>${o.proveedor?.nombre || (o.proveedorId ? `#${o.proveedorId}` : '--')}</td>
             <td>${o.bodegaDestino?.nombre || `Bodega #${o.bodegaDestinoId}`}</td>
             <td>${formatNumber(o.cantidad)}</td>
-            <td>${formatCurrency(o.precioUnitario)}</td>
             <td><strong>${formatCurrency(o.total)}</strong></td>
             <td>${formatDate(o.fechaCreacion)}</td>
             <td><span class="badge ${getEstadoClass(o.estado)}">${o.estado}</span></td>
             <td>
                 <div class="actions-cell">
-                    <button class="btn btn-ghost btn-sm btn-pdf" data-id="${o.id}" title="Ver PDF">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="action-btn action-btn-view" data-action="pdf" data-id="${o.id}" title="${o.pdfBytes ? 'Ver PDF' : 'Generar PDF'}">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
                         </svg>
                     </button>
                     ${isAdmin && o.estado === 'BORRADOR' ? `
-                        <button class="btn btn-ghost btn-sm btn-aprobar" data-id="${o.id}" title="Aprobar">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button class="action-btn action-btn-success" data-action="aprobar" data-id="${o.id}" title="Aprobar orden">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                        </button>
-                    ` : ''}
+                        </button>` : ''}
+                    ${isAdmin && o.estado === 'APROBADA' ? `
+                        <button class="action-btn action-btn-success" data-action="recibir" data-id="${o.id}" title="Recibir orden">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                        </button>` : ''}
+                    ${isAdmin && (o.estado === 'BORRADOR' || o.estado === 'APROBADA') ? `
+                        <button class="action-btn action-btn-danger" data-action="cancelar" data-id="${o.id}" title="Cancelar orden">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>` : ''}
                 </div>
             </td>
-        </tr>
-    `).join('');
-    
-    // Add event listeners
-    tbody.querySelectorAll('.btn-pdf').forEach(btn => {
+        </tr>`).join('');
+
+    tbody.querySelectorAll('.action-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            const action = btn.dataset.action;
             const id = parseInt(btn.dataset.id);
-            handleViewPdf(id);
-        });
-    });
-    
-    tbody.querySelectorAll('.btn-aprobar').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const id = parseInt(btn.dataset.id);
-            handleAprobarOrden(id);
+            if (action === 'pdf') generateAndOpenPdf(id);
+            else if (action === 'aprobar') handleAprobarOrden(id);
+            else if (action === 'recibir') handleRecibirOrden(id);
+            else if (action === 'cancelar') handleCancelarOrden(id);
         });
     });
 }
@@ -646,81 +513,62 @@ function renderProductosRiesgo() {
     const emptyEl = document.getElementById('riesgoEmpty');
     const table = document.getElementById('riesgoTable');
     const productos = state.data.productosRiesgo || [];
-    
+
     if (!tbody || !emptyEl || !table) return;
-    
+
     if (productos.length === 0) {
         tbody.innerHTML = '';
         table.style.display = 'none';
         emptyEl.classList.remove('hidden');
         return;
     }
-    
+
     table.style.display = 'table';
     emptyEl.classList.add('hidden');
-    
-    tbody.innerHTML = productos.map(p => `
-        <tr>
+
+    tbody.innerHTML = productos.map((p, i) => `
+        <tr style="animation: slideUp 0.3s ease ${i * 0.04}s both">
             <td><strong>${p.nombre}</strong></td>
-            <td>${p.proveedor || '—'}</td>
+            <td>${p.proveedor || '--'}</td>
             <td>${formatNumber(p.stockTotal)}</td>
-            <td>${p.consumoDiarioPromedio ? p.consumoDiarioPromedio.toFixed(2) : '—'}</td>
-            <td>${p.puntoReorden ? Math.ceil(p.puntoReorden) : '—'}</td>
-            <td>${p.diasCobertura ? p.diasCobertura.toFixed(1) : (p.estado === 'SIN_CONSUMO' ? 'SIN_CONSUMO' : '—')}</td>
+            <td>${p.consumoDiarioPromedio ? p.consumoDiarioPromedio.toFixed(2) : '--'}</td>
+            <td>${p.puntoReorden ? Math.ceil(p.puntoReorden) : '--'}</td>
+            <td>${p.diasCobertura ? p.diasCobertura.toFixed(1) : (p.estado === 'SIN_CONSUMO' ? 'SIN_CONSUMO' : '--')}</td>
             <td><span class="badge ${getEstadoClass(p.estado)}">${p.estado}</span></td>
-            <td>${p.bodegaDestinoId ? `#${p.bodegaDestinoId}` : '—'}</td>
-            <td>
-                <button class="btn btn-ghost btn-sm btn-pdf" data-id="${p.productoId}" title="Ver stock">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="16"></line>
-                        <line x1="8" y1="12" x2="16" y2="12"></line>
-                    </svg>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+            <td>${p.bodegaDestinoId ? `#${p.bodegaDestinoId}` : '--'}</td>
+        </tr>`).join('');
 }
 
 function renderBodegas() {
     const tbody = document.getElementById('bodegasBody');
     if (!tbody) return;
-    
-    const ocupacion = state.data.ocupacion || [];
-    
-    if (ocupacion.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty-state" style="padding: 32px;">
-                    <p>No hay datos de bodegas disponibles</p>
-                </td>
-            </tr>
-        `;
+
+    const bodegas = state.data.bodegas || [];
+
+    if (bodegas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="padding:32px"><p>No hay datos de bodegas disponibles</p></td></tr>`;
         return;
     }
-    
-    tbody.innerHTML = ocupacion.map(b => {
-        const porcentaje = b.porcentajeOcupacion || 0;
-        const isCritica = porcentaje >= 90;
-        const badgeClass = isCritica ? 'badge-danger' : (porcentaje >= 70 ? 'badge-warning' : 'badge-success');
-        
+
+    tbody.innerHTML = bodegas.map((b, i) => {
+        const pct = b.porcentajeOcupacion || 0;
+        const cls = getOccupancyClass(pct);
+        const label = getOccupancyLabel(pct);
         return `
-            <tr>
+            <tr style="animation: slideUp 0.3s ease ${i * 0.05}s both">
                 <td><strong>${b.bodegaNombre || `Bodega ${b.bodegaId}`}</strong></td>
-                <td>—</td>
                 <td>${formatNumber(b.stockTotal)}</td>
                 <td>${formatNumber(b.capacidad)}</td>
                 <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="flex: 1; height: 8px; background: var(--color-bg); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${Math.min(porcentaje, 100)}%; height: 100%; background: ${isCritica ? 'var(--color-danger)' : (porcentaje >= 70 ? 'var(--color-warning)' : 'var(--color-success)')}; transition: width 0.3s ease;"></div>
+                    <div class="progress-bar">
+                        <div class="progress-track">
+                            <div class="progress-fill ${cls}" style="width:${Math.min(pct, 100)}%"></div>
                         </div>
-                        <span class="badge ${badgeClass}" style="font-size: 11px; white-space: nowrap;">${porcentaje.toFixed(1)}%</span>
+                        <span class="badge badge-${cls === 'red' ? 'danger' : cls === 'yellow' ? 'warning' : 'success'}">${pct.toFixed(1)}%</span>
                     </div>
                 </td>
-                <td><span class="badge ${badgeClass}">${isCritica ? 'CRÍTICA' : (porcentaje >= 70 ? 'ALTA' : 'NORMAL')}</span></td>
-            </tr>
-        `;
+                <td><span class="badge badge-${cls === 'red' ? 'danger' : cls === 'yellow' ? 'warning' : 'success'}">${label}</span></td>
+            </tr>`;
     }).join('');
 }
 
@@ -730,24 +578,20 @@ function renderBodegas() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    
     const form = e.target;
     const username = form.username.value.trim();
     const password = form.password.value;
     const btn = document.getElementById('loginBtn');
     const errorEl = document.getElementById('loginError');
-    
-    if (!username || !password) {
-        showError(errorEl, 'Ingrese usuario y contraseña');
-        return;
-    }
-    
+
+    if (!username || !password) { showError(errorEl, 'Ingrese usuario y contrasena'); return; }
+
     btn.classList.add('loading');
     btn.querySelector('.btn-text').classList.add('hidden');
     btn.querySelector('.btn-loader').classList.remove('hidden');
     btn.disabled = true;
     errorEl.classList.add('hidden');
-    
+
     try {
         await login(username, password);
         window.location.href = 'dashboard.html';
@@ -761,113 +605,82 @@ async function handleLogin(e) {
     }
 }
 
-function showError(el, message) {
-    el.textContent = message;
-    el.classList.remove('hidden');
-}
-
-async function handleViewPdf(orderId) {
-    const btn = document.querySelector(`.btn-pdf[data-id="${orderId}"]`);
-    if (!btn) return;
-    
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<span class="btn-loader"></span>';
-    btn.disabled = true;
-    
-    try {
-        const blob = await viewOrderPdf(orderId);
-        openPdfInModal(blob, orderId);
-    } catch (error) {
-        alert(error.message);
-    } finally {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-    }
-}
+function showError(el, msg) { el.textContent = msg; el.classList.remove('hidden'); }
 
 async function handleAprobarOrden(orderId) {
-    const confirmed = await showConfirm(
-        'Aprobar Orden',
-        `¿Está seguro de aprobar la orden #${orderId}? Esta acción no se puede deshacer.`
-    );
-    
+    const confirmed = await showConfirm('Aprobar Orden', `Esta seguro de aprobar la orden #${orderId}? Esta accion no se puede deshacer.`);
     if (!confirmed) return;
-    
     try {
         await aprobarOrden(orderId);
         showToast('Orden aprobada correctamente', 'success');
         await refreshDashboard();
-    } catch (error) {
-        alert(error.message);
-    }
+    } catch (error) { showToast(error.message, 'error'); }
+}
+
+async function handleRecibirOrden(orderId) {
+    const confirmed = await showConfirm('Recibir Orden', `Esta seguro de recibir la orden #${orderId}? Esta accion registrara una entrada de inventario.`);
+    if (!confirmed) return;
+    try {
+        await apiRequest(ENDPOINTS.ordenEstado(orderId), { method: 'PATCH', body: JSON.stringify({ estado: 'RECIBIDA' }) });
+        showToast('Orden recibida. Entrada de inventario registrada.', 'success');
+        await refreshDashboard();
+    } catch (error) { showToast(error.message, 'error'); }
+}
+
+async function handleCancelarOrden(orderId) {
+    const confirmed = await showConfirm('Cancelar Orden', `Esta seguro de cancelar la orden #${orderId}? Esta accion no se puede deshacer.`);
+    if (!confirmed) return;
+    try {
+        await apiRequest(ENDPOINTS.ordenEstado(orderId), { method: 'PATCH', body: JSON.stringify({ estado: 'CANCELADA' }) });
+        showToast('Orden cancelada', 'success');
+        await refreshDashboard();
+    } catch (error) { showToast(error.message, 'error'); }
 }
 
 function showConfirm(title, message) {
     return new Promise((resolve) => {
         const modal = document.getElementById('confirmModal');
         const titleEl = document.getElementById('confirmTitle');
-        const messageEl = document.getElementById('confirmMessage');
+        const msgEl = document.getElementById('confirmMessage');
         const okBtn = document.getElementById('confirmOk');
         const cancelBtn = document.getElementById('confirmCancel');
-        
+
         titleEl.textContent = title;
-        messageEl.textContent = message;
-        
+        msgEl.textContent = message;
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        
+
         const cleanup = () => {
             modal.classList.add('hidden');
             document.body.style.overflow = '';
             okBtn.removeEventListener('click', onOk);
             cancelBtn.removeEventListener('click', onCancel);
         };
-        
-        const onOk = () => {
-            cleanup();
-            resolve(true);
-        };
-        
-        const onCancel = () => {
-            cleanup();
-            resolve(false);
-        };
-        
+
+        const onOk = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+
         okBtn.addEventListener('click', onOk);
         cancelBtn.addEventListener('click', onCancel);
-        
-        // Close on overlay click
-        modal.querySelector('.modal-overlay').onclick = () => {
-            cleanup();
-            resolve(false);
-        };
+        modal.querySelector('.modal-overlay').onclick = () => { cleanup(); resolve(false); };
     });
 }
 
 function showToast(message, type = 'info') {
-    // Simple toast implementation
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        padding: 12px 20px;
-        background: ${type === 'success' ? 'var(--color-success)' : type === 'error' ? 'var(--color-danger)' : 'var(--color-primary)'};
-        color: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
-        z-index: 300;
-        animation: slideIn 0.3s ease;
-    `;
-    
+    toast.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' :
+              type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>' :
+              '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
+        </svg>
+        <span>${message}</span>`;
     document.body.appendChild(toast);
-    
     setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
+        toast.style.animation = 'fadeOut 0.3s ease forwards';
         setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    }, 3500);
 }
 
 async function refreshDashboard() {
@@ -880,39 +693,28 @@ function renderDashboard() {
     renderMovimientosAyer();
     renderOcupacion();
     renderResumen();
-    renderOrdenesBorrador();
+    renderOrdenes();
     renderProductosRiesgo();
     renderBodegas();
 }
 
 // ========================================
-// Page Navigation
+// Navigation
 // ========================================
 
 function navigateTo(page) {
-    // Update nav items
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.page === page);
     });
-    
-    // Update pages
     document.querySelectorAll('.page').forEach(p => {
         p.classList.toggle('active', p.id === `page-${page}`);
     });
-    
-    // Update title
-    const titles = {
-        dashboard: 'Dashboard',
-        ordenes: 'Órdenes de Compra',
-        productos: 'Productos en Riesgo',
-        bodegas: 'Bodegas',
-    };
+
+    const titles = { dashboard: 'Dashboard', ordenes: 'Ordenes de Compra', productos: 'Productos en Riesgo', bodegas: 'Bodegas' };
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
-    
+
     state.currentPage = page;
-    
-    // Close sidebar on mobile
     document.getElementById('sidebar')?.classList.remove('open');
 }
 
@@ -921,231 +723,86 @@ function navigateTo(page) {
 // ========================================
 
 function initLogin() {
-    // Check if already logged in
-    if (isAuthenticated()) {
-        window.location.href = 'dashboard.html';
-        return;
-    }
-    
+    if (isAuthenticated()) { window.location.href = 'dashboard.html'; return; }
     const form = document.getElementById('loginForm');
-    if (form) {
-        form.addEventListener('submit', handleLogin);
-    }
+    if (form) form.addEventListener('submit', handleLogin);
 }
 
 function initDashboard() {
-    // Check auth
-    if (!isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    // Set user info in header
+    if (!isAuthenticated()) { window.location.href = 'login.html'; return; }
+
     const user = getUser();
     if (user) {
         const nameEl = document.getElementById('userName');
         const roleEl = document.getElementById('userRole');
         if (nameEl) nameEl.textContent = user.username;
-        if (roleEl) {
-            roleEl.textContent = user.rol;
-            roleEl.className = `role-badge ${user.rol}`;
-        }
+        if (roleEl) { roleEl.textContent = user.rol; roleEl.className = `role-badge ${user.rol}`; }
     }
-    
-    // Logout button
+
     const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', logout);
-    }
-    
-    // Menu toggle
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     if (menuToggle && sidebar) {
-        menuToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
+        menuToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
     }
-    
-    // Close sidebar on overlay click (mobile)
+
     document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 768 && sidebar && menuToggle) {
             if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
                 sidebar.classList.remove('open');
             }
         }
     });
-    
-    // Navigation
+
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
+    });
+
+    // Order filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
             e.preventDefault();
-            navigateTo(item.dataset.page);
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.currentOrderFilter = btn.dataset.status;
+            await fetchOrdenes(state.currentOrderFilter);
+            renderOrdenes();
         });
     });
-    
-    // PDF Modal close
+
+    // PDF Modal
     const closePdfModalBtn = document.getElementById('closePdfModal');
     const closePdfBtn = document.getElementById('closePdfBtn');
     const pdfModal = document.getElementById('pdfModal');
-    
-    [closePdfModalBtn, closePdfBtn].forEach(btn => {
-        if (btn) btn.addEventListener('click', closePdfModal);
-    });
-    
-    if (pdfModal) {
-        pdfModal.querySelector('.modal-overlay').addEventListener('click', closePdfModal);
-    }
-    
-    // Initial load
+    [closePdfModalBtn, closePdfBtn].forEach(btn => { if (btn) btn.addEventListener('click', closePdfModal); });
+    if (pdfModal) pdfModal.querySelector('.modal-overlay').addEventListener('click', closePdfModal);
+
     loadDashboard();
 }
 
 async function loadDashboard() {
     try {
-        showLoading(true);
+        document.body.classList.add('loading');
         await fetchAllDashboardData();
         renderDashboard();
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        if (error.message.includes('Sesión expirada') || error.message.includes('401')) {
+        if (error.message.includes('Sesion expirada') || error.message.includes('401')) {
             window.location.href = 'login.html';
         }
     } finally {
-        showLoading(false);
+        document.body.classList.remove('loading');
     }
 }
 
-function showLoading(show) {
-    // Could add a global loading indicator here
-    document.body.classList.toggle('loading', show);
-}
-
 // ========================================
-// Add toast styles dynamically
-// ========================================
-
-const toastStyles = document.createElement('style');
-toastStyles.textContent = `
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-.toast {
-    animation: slideIn 0.3s ease;
-}
-`;
-document.head.appendChild(toastStyles);
-
-// ========================================
-// Alerta/Accion Styles
-// ========================================
-
-const extraStyles = document.createElement('style');
-extraStyles.textContent = `
-.resumen-card {
-    padding: 16px;
-}
-.resumen-narrativa h4,
-.resumen-section h4 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-}
-.resumen-narrativa p {
-    color: var(--color-text);
-    line-height: 1.6;
-}
-.resumen-section {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-border);
-}
-.alertas-list,
-.acciones-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-.alerta-item {
-    padding: 12px;
-    background: var(--color-bg);
-    border-radius: var(--radius);
-    border-left: 3px solid var(--color-danger);
-}
-.alerta-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-}
-.alerta-detalle {
-    font-size: 13px;
-    color: var(--color-text);
-    margin: 0;
-}
-.alerta-refs {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-}
-.alerta-refs .ref {
-    font-size: 11px;
-    color: var(--color-text-muted);
-}
-.accion-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: var(--color-bg);
-    border-radius: var(--radius);
-}
-.accion-item .ref {
-    font-size: 11px;
-    color: var(--color-text-muted);
-}
-.actions-cell {
-    display: flex;
-    gap: 4px;
-}
-.btn-loading {
-    position: relative;
-    color: transparent !important;
-}
-.btn-loading .btn-loader {
-    display: block !important;
-}
-`;
-document.head.appendChild(extraStyles);
-
-// ========================================
-// Export for global access
+// Exports
 // ========================================
 
 window.LogiTrack = {
-    apiRequest,
-    login,
-    logout,
-    getToken,
-    getUser,
-    getUserRole,
-    hasRole,
-    fetchKPIs,
-    fetchProductosRiesgo,
-    fetchOrdenesBorrador,
-    fetchResumen,
-    fetchOcupacion,
-    generateOrderPdf,
-    viewOrderPdf,
-    aprobarOrden,
-    navigateTo,
-    state,
+    apiRequest, login, logout, getToken, getUser, getUserRole, hasRole,
+    fetchKPIs, fetchProductosRiesgo, fetchOrdenes, fetchResumen,
+    generateAndOpenPdf, aprobarOrden, navigateTo, state,
 };

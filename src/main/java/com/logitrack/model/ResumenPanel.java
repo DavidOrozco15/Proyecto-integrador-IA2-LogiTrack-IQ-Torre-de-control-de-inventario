@@ -31,6 +31,12 @@ public class ResumenPanel {
     @Column(nullable = false, length = 2000)
     private String narrativa;
 
+    @Column(name = "contenido_json", columnDefinition = "text")
+    private String contenidoJson;
+
+    @Column(length = 50)
+    private String autor;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class PdfOrdenService {
 
         byte[] pdf = crearPdfConMarcaDeAgua(orden);
         orden.setPdfBytes(pdf);
+        orden.setPdfFechaGeneracion(LocalDateTime.now());
         ordenCompraRepository.save(orden);
         return pdf;
     }
@@ -69,6 +71,12 @@ public class PdfOrdenService {
                 cs.showText("Precio unitario: " + orden.getPrecioUnitario());
                 cs.newLineAtOffset(0, -20);
                 cs.showText("Total: " + orden.getTotal());
+                cs.newLineAtOffset(0, -20);
+                cs.showText("Bodega destino: " + (orden.getBodegaDestino() != null ? orden.getBodegaDestino().getNombre() : "-"));
+                cs.newLineAtOffset(0, -20);
+                cs.showText("Estado: " + orden.getEstado());
+                cs.newLineAtOffset(0, -20);
+                cs.showText("Fecha creacion: " + (orden.getFechaCreacion() != null ? orden.getFechaCreacion() : "-"));
                 cs.endText();
 
                 // Marca de agua "BORRADOR" como texto real (extraíble con PDFTextStripper)

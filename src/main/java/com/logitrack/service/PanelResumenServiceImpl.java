@@ -3,6 +3,8 @@ package com.logitrack.service;
 import com.logitrack.dto.ResumenPanelRequest;
 import com.logitrack.exception.BadRequestException;
 import com.logitrack.model.ResumenPanel;
+import com.logitrack.config.UserContext;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import com.logitrack.repository.AuditoriaRepository;
 import com.logitrack.repository.BodegaRepository;
@@ -60,7 +62,16 @@ public class PanelResumenServiceImpl implements PanelResumenService {
         ResumenPanel resumen = ResumenPanel.builder()
                 .fecha(request.getFecha())
                 .narrativa(request.getNarrativa())
+                .autor(UserContext.getUsername())
                 .build();
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(request);
+            resumen.setContenidoJson(json);
+        } catch (Exception e) {
+            resumen.setContenidoJson(null);
+        }
 
         resumenPanelRepository.save(resumen);
     }

@@ -43,8 +43,6 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         if (orden.getPrecioUnitario() == null || orden.getPrecioUnitario().compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("El precio unitario debe ser mayor a 0");
         }
-        // Calcular total en el servidor
-        orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
         
         // Hidratar relaciones para que se serialicen correctamente en la respuesta
         if (orden.getProducto() != null && orden.getProducto().getId() != null) {
@@ -59,7 +57,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
 
         // Calcular total en el servidor
         orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
-        String username = UserContext.getUsername();
+        orden.setCreadoPor(UserContext.getUsername());
         return ordenCompraRepository.save(orden);
     }
 
@@ -71,12 +69,22 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
 
         EstadoOrdenCompra estadoAnterior = orden.getEstado();
 
-        if (estadoAnterior == EstadoOrdenCompra.CANCELADA && nuevoEstado == EstadoOrdenCompra.APROBADA) {
-            throw new BadRequestException("No se puede aprobar una orden cancelada");
+        // Validar transiciones de estado según las reglas del proyecto
+        boolean transicionValida = switch (estadoAnterior) {
+            case BORRADOR -> nuevoEstado == EstadoOrdenCompra.APROBADA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case APROBADA -> nuevoEstado == EstadoOrdenCompra.RECIBIDA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case PENDIENTE -> nuevoEstado == EstadoOrdenCompra.APROBADA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case RECIBIDA, CANCELADA -> false; // Estados terminales
+        };
+
+        if (!transicionValida) {
+            throw new BadRequestException(
+                String.format("Transicion no permitida: %s -> %s", estadoAnterior, nuevoEstado));
         }
 
         orden.setEstado(nuevoEstado);
         orden.setPdfBytes(null);
+        orden.setPdfFechaGeneracion(null);
         orden = ordenCompraRepository.save(orden);
 
         if (estadoAnterior == EstadoOrdenCompra.APROBADA && nuevoEstado == EstadoOrdenCompra.RECIBIDA) {
