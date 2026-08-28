@@ -7,8 +7,38 @@
         "timezone": "America/Bogota"
       },
       "type": "n8n-nodes-base.cron",
-      "position": [100, 0],
+      "position": [
+        100,
+        0
+      ],
       "name": "Programador 6:00 am"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "mcp_base_url",
+              "value": "http://localhost:8081"
+            },
+            {
+              "name": "mcp_username",
+              "value": "agente_user"
+            },
+            {
+              "name": "mcp_password",
+              "value": "admin123"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "position": [
+        300,
+        0
+      ],
+      "name": "Config MCP"
     },
     {
       "parameters": {
@@ -18,18 +48,23 @@
             "operation": "post"
           }
         ],
-        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/kpis",
+        "url": "={{$node[\"Config MCP\"].json[\"mcp_base_url\"]}}/tools/consultar_kpis",
         "method": "GET",
         "authentication": "none",
-        "headerParameters": [
-          {
-            "name": "Authorization",
-            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
-          }
-        ]
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
-      "position": [300, 0],
+      "position": [
+        500,
+        0
+      ],
       "name": "consultar_kpis"
     },
     {
@@ -40,32 +75,42 @@
             "operation": "post"
           }
         ],
-        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/productos/riesgo",
+        "url": "={{$node[\"Config MCP\"].json[\"mcp_base_url\"]}}/tools/consultar_productos_en_riesgo",
         "method": "GET",
         "authentication": "none",
-        "headerParameters": [
-          {
-            "name": "Authorization",
-            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
-          }
-        ]
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
-      "position": [300, 200],
+      "position": [
+        500,
+        200
+      ],
       "name": "consultar_productos_en_riesgo"
     },
     {
       "parameters": {
-        "apiKey": "",
-        "outputDataType": "json",
-        "model": "gpt-4o-mini",
-        "systemMessage": "Eres un agente de inventario para LogiTrack. Usa las herramientas MCP para consultar stock, riesgos y KPIs. No apruebes ordenes, solo creates en borrador cuando sea necesario.",
-        "temperature": 0.1,
-        "maxTokens": 2000
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$node[\"consultar_productos_en_riesgo\"].json.length > 0}}",
+              "operation": "true"
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.aiAgent",
-      "position": [500, 100],
-      "name": "Nodo AI Agent"
+      "type": "n8n-nodes-base.if",
+      "position": [
+        700,
+        100
+      ],
+      "name": "¿Hay productos en riesgo?"
     },
     {
       "parameters": {
@@ -75,23 +120,28 @@
             "operation": "post"
           }
         ],
-        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/ordenes",
+        "url": "={{$node[\"Config MCP\"].json[\"mcp_base_url\"]}}/tools/crear_orden_borrador",
         "method": "POST",
         "authentication": "none",
-        "headerParameters": [
-          {
-            "name": "Authorization",
-            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
-          }
-        ],
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "options": {
           "bodyContent": "json",
           "jsonParameters": true,
-          "rawBody": "{\"productoId\": {{ $json[\"productoId\"] }}, \"proveedorId\": {{ $json[\"proveedorId\"] }}, \"bodegaDestinoId\": {{ $json[\"bodegaDestinoId\"] }}, \"cantidad\": {{ $json[\"cantidad\"] }}, \"precioUnitario\": {{ $json[\"precioUnitario\"] }}}"
+          "rawBody": "={\n  \"productoId\": {{ $node[\"consultar_productos_en_riesgo\"].json[0].productoId }},\n  \"proveedorId\": {{ $node[\"consultar_productos_en_riesgo\"].json[0].proveedorId || null }},\n  \"bodegaDestinoId\": {{ $node[\"consultar_productos_en_riesgo\"].json[0].bodegaDestinoId }},\n  \"cantidad\": {{ Math.ceil(Math.max(1, ($node[\"consultar_productos_en_riesgo\"].json[0].puntoReorden * 2) - $node[\"consultar_productos_en_riesgo\"].json[0].stockTotal)) }},\n  \"precioUnitario\": {{ $node[\"consultar_productos_en_riesgo\"].json[0].precioUnitario || 0 }}\n}"
         }
       },
       "type": "n8n-nodes-base.httpRequest",
-      "position": [700, 200],
+      "position": [
+        900,
+        0
+      ],
       "name": "crear_orden_borrador"
     },
     {
@@ -102,24 +152,61 @@
             "operation": "post"
           }
         ],
-        "url": "={{$node[\"MCP Tools\"].json[\"api_base_url\"]}}/panel/resumen",
+        "url": "={{$node[\"Config MCP\"].json[\"mcp_base_url\"]}}/tools/publicar_resumen",
         "method": "POST",
         "authentication": "none",
-        "headerParameters": [
-          {
-            "name": "Authorization",
-            "value": "={{$node[\"Auth\"].json[\"token\"]}}"
-          }
-        ],
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
         "options": {
           "bodyContent": "json",
           "jsonParameters": true,
-          "rawBody": "{\"fecha\": \"{{$now.format('YYYY-MM-DD')}}\", \"narrativa\": \"Hay productos en riesgo y una orden pendiente de aprobacion.\", \"alertas\": [{\"severidad\": \"ALTA\"}], \"accionesSugeridas\": [{\"tipo\": \"REVISAR_ORDEN\"}]}"
+          "rawBody": "={\n  \"fecha\": \"{{ $now.format('YYYY-MM-DD', {zone: 'America/Bogota'}) }}\",\n  \"narrativa\": \"{{ $node[\"crear_orden_borrador\"].json.ordenId ? 'Hay productos en riesgo y una orden pendiente de aprobaci\\u00f3n.' : 'No hay productos en riesgo el d\\u00eda de hoy. Inventario estable.' }}\",\n  \"alertas\": {{ $node[\"crear_orden_borrador\"].json.ordenId ? JSON.stringify([{ \"severidad\": \"ALTA\", \"titulo\": \"Producto en riesgo\", \"detalle\": \"Producto \" + $node[\"consultar_productos_en_riesgo\"].json[0].nombre + \" est\\u00e1 por debajo de su punto de reorden.\", \"productoId\": $node[\"consultar_productos_en_riesgo\"].json[0].productoId, \"ordenId\": $node[\"crear_orden_borrador\"].json.ordenId, \"bodegaId\": $node[\"consultar_productos_en_riesgo\"].json[0].bodegaDestinoId }]) : '[]' }},\n  \"accionesSugeridas\": {{ $node[\"crear_orden_borrador\"].json.ordenId ? JSON.stringify([{ \"tipo\": \"REVISAR_ORDEN\", \"descripcion\": \"Revisar la orden \" + $node[\"crear_orden_borrador\"].json.ordenId + \" antes de aprobarla.\", \"ordenId\": $node[\"crear_orden_borrador\"].json.ordenId, \"productoId\": null, \"bodegaId\": null }]) : '[]' }}\n}"
         }
       },
       "type": "n8n-nodes-base.httpRequest",
-      "position": [700, 400],
-      "name": "publicar_resumen"
+      "position": [
+        900,
+        200
+      ],
+      "name": "publicar_resumen_con_orden"
+    },
+    {
+      "parameters": {
+        "resources": [
+          {
+            "resource": "executeAPI",
+            "operation": "post"
+          }
+        ],
+        "url": "={{$node[\"Config MCP\"].json[\"mcp_base_url\"]}}/tools/publicar_resumen",
+        "method": "POST",
+        "authentication": "none",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "bodyContent": "json",
+          "jsonParameters": true,
+          "rawBody": "={\n  \"fecha\": \"{{ $now.format('YYYY-MM-DD', {zone: 'America/Bogota'}) }}\",\n  \"narrativa\": \"No hay productos en riesgo el d\\u00eda de hoy. Inventario estable.\",\n  \"alertas\": [],\n  \"accionesSugeridas\": []\n}"
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        900,
+        400
+      ],
+      "name": "publicar_resumen_sin_orden"
     }
   ],
   "connections": {
@@ -127,7 +214,23 @@
       "main": [
         [
           {
+            "node": "Config MCP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config MCP": {
+      "main": [
+        [
+          {
             "node": "consultar_kpis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "consultar_productos_en_riesgo",
             "type": "main",
             "index": 0
           }
@@ -138,7 +241,7 @@
       "main": [
         [
           {
-            "node": "consultar_productos_en_riesgo",
+            "node": "¿Hay productos en riesgo?",
             "type": "main",
             "index": 0
           }
@@ -149,18 +252,25 @@
       "main": [
         [
           {
-            "node": "Nodo AI Agent",
+            "node": "¿Hay productos en riesgo?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Nodo AI Agent": {
+    "¿Hay productos en riesgo?": {
       "main": [
         [
           {
             "node": "crear_orden_borrador",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "publicar_resumen_sin_orden",
             "type": "main",
             "index": 0
           }
@@ -171,22 +281,21 @@
       "main": [
         [
           {
-            "node": "publicar_resumen",
+            "node": "publicar_resumen_con_orden",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "publicar_resumen": {
+    "publicar_resumen_con_orden": {
       "main": [
-        [
-          {
-            "node": "Programador 6:00 am",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
+      ]
+    },
+    "publicar_resumen_sin_orden": {
+      "main": [
+        []
       ]
     }
   },

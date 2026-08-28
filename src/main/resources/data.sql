@@ -6,7 +6,8 @@ SET search_path TO proyecto;
 INSERT INTO usuarios (id, username, email, password, rol) VALUES
 (1, 'admin', 'admin@logitrac.com', '$2a$10$EblZqNptyYvcLm/VwDCVAu.23Q.4xZ41rE24R9Y/x/c.d1e2f3g4', 'ADMIN'),
 (2, 'jdoe', 'j.doe@logitrac.com', '$2a$10$EblZqNptyYvcLm/VwDCVAu.23Q.4xZ41rE24R9Y/x/c.d1e2f3g4', 'EMPLEADO'),
-(3, 'mgarcia', 'm.garcia@logitrac.com', '$2a$10$EblZqNptyYvcLm/VwDCVAu.23Q.4xZ41rE24R9Y/x/c.d1e2f3g4', 'EMPLEADO')
+(3, 'mgarcia', 'm.garcia@logitrac.com', '$2a$10$EblZqNptyYvcLm/VwDCVAu.23Q.4xZ41rE24R9Y/x/c.d1e2f3g4', 'EMPLEADO'),
+(4, 'agente_user', 'agente@logitrac.com', '$2a$10$EblZqNptyYvcLm/VwDCVAu.23Q.4xZ41rE24R9Y/x/c.d1e2f3g4', 'AGENTE')
 ON CONFLICT (id) DO NOTHING;
 
 -- Bodegas
