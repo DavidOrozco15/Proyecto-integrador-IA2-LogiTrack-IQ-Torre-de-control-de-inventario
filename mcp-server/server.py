@@ -3,6 +3,11 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
 import yaml
 import os
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LogiTrack MCP Server")
 
@@ -21,21 +26,59 @@ AGENT_PASSWORD = config["mcp"]["agente_password"]
 class Token(BaseModel):
     access_token: str
 
+def get_auth_headers():
+    """Obtener headers de autorización con token AGENTE"""
+    token = get_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    logger.debug(f"=== AUTH DEBUG ===")
+    logger.debug(f"Token length: {len(token) if token else 0}")
+    logger.debug(f"Token preview: {token[:80] if token else 'None'}")
+    logger.debug(f"Full header: {headers}")
+    return headers
+
+# Cache para evitar múltiples logins
+_token_cache = {"token": None, "expires_at": 0}
+
 def get_token():
     """Obtener token JWT autenticándose como usuario AGENTE"""
+    import time
+    global _token_cache
+    
+    # Verificar si el token cacheado sigue válido (con 60s de margen)
+    if _token_cache["token"] and time.time() < _token_cache["expires_at"] - 60:
+        logger.debug(f"Using cached token")
+        return _token_cache["token"]
+    
+    """Obtener token JWT autenticándose como usuario AGENTE"""
     login_url = f"{API_BASE_URL}/auth/login"
-    response = requests.post(login_url, data={
+    response = requests.post(login_url, json={
         "username": AGENT_USERNAME,
         "password": AGENT_PASSWORD
     })
+    logger.debug(f"Login response status: {response.status_code}")
+    logger.debug(f"Login response body: {response.text}")
     if response.status_code == 200:
-        return response.json().get("access_token")
+        token_data = response.json()
+        token = token_data.get("token")  # Backend devuelve "token", no "access_token"
+        logger.debug(f"Token obtained: {token[:50] if token else None}...")
+        
+        # Cachear token (JWT expira en 24h, ponemos 23h)
+        _token_cache["token"] = token
+        _token_cache["expires_at"] = time.time() + 23 * 3600
+        
+        return token
+    logger.error(f"Login failed: {response.status_code} - {response.text}")
     raise HTTPException(status_code=401, detail="No se pudo obtener token de autenticación")
 
 def get_auth_headers():
     """Obtener headers de autorización con token AGENTE"""
     token = get_token()
-    return {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}"}
+    logger.debug(f"=== AUTH DEBUG ===")
+    logger.debug(f"Token length: {len(token) if token else 0}")
+    logger.debug(f"Token preview: {token[:80] if token else 'None'}")
+    logger.debug(f"Full header: {headers}")
+    return headers
 
 # Modelos de petición
 class ResumenRequest(BaseModel):
@@ -51,7 +94,12 @@ def consultar_stock_producto(productoId: int):
     try:
         url = f"{API_BASE_URL}/productos/{productoId}/stock"
         headers = get_auth_headers()
+        logger.debug(f"=== REQUEST DEBUG ===")
+        logger.debug(f"URL: {url}")
+        logger.debug(f"Headers: {headers}")
         response = requests.get(url, headers=headers, timeout=30)
+        logger.debug(f"Response status: {response.status_code}")
+        logger.debug(f"Response body: {response.text[:500]}")
         if response.status_code == 200:
             return response.json()
         raise HTTPException(status_code=response.status_code, detail=f"Error al consultar stock: {response.text}")
@@ -123,12 +171,14 @@ def crear_orden_borrador(request: CrearOrdenRequest):
         url = f"{API_BASE_URL}/ordenes"
         headers = get_auth_headers()
         payload = {
-            "productoId": request.productoId,
-            "proveedorId": request.proveedorId,
-            "bodegaDestinoId": request.bodegaDestinoId,
+            "producto": {"id": request.productoId},
+            "proveedor": {"id": request.proveedorId} if request.proveedorId else None,
+            "bodegaDestino": {"id": request.bodegaDestinoId},
             "cantidad": request.cantidad,
             "precioUnitario": request.precioUnitario
         }
+        # Remove None values
+        payload = {k: v for k, v in payload.items() if v is not None}
         response = requests.post(url, json=payload, headers=headers, timeout=30)
         if response.status_code == 201:
             return response.json()

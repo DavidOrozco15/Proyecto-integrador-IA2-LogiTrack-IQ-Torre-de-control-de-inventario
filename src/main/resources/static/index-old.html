@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogiTrack - Iniciar sesión</title>
+
+<!-- Fuentes (solo tipografías, no es un framework) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap">
+
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="page">
+<main class="login-shell">
+
+  <div class="login-card" id="login-card">
+
+    <div class="login-card__header" data-animate style="animation-delay:0ms">
+      <h1 class="login-card__logo">LogiTrack</h1>
+      <h2 class="login-card__title">Iniciar sesión</h2>
+    </div>
+
+    <!-- Mensaje de error (oculto por defecto) -->
+    <div class="alert alert--error hidden" id="error-message" role="alert" aria-live="assertive">
+      <span class="material-symbols-outlined alert__icon">error</span>
+      <span>Credenciales incorrectas. Por favor, intenta de nuevo.</span>
+    </div>
+
+    <form class="login-form" id="login-form" novalidate>
+
+      <div class="form-group" data-animate style="animation-delay:80ms">
+        <label class="form-label" for="username">Correo o usuario</label>
+        <input class="form-input" id="username" name="username" placeholder="tu@empresa.com" required type="text">
+      </div>
+
+      <div class="form-group" data-animate style="animation-delay:150ms">
+        <label class="form-label" for="password">Contraseña</label>
+        <div class="password-field">
+          <input class="form-input" id="password" name="password" placeholder="••••••••" required type="password">
+          <button class="password-toggle" id="toggle-password-btn" type="button" aria-label="Mostrar contraseña">
+            <span class="material-symbols-outlined" id="toggleIcon">visibility_off</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-actions" data-animate style="animation-delay:220ms">
+        <button class="btn btn--primary" id="submit-btn" type="submit">
+          <span class="btn-spinner hidden" id="btn-spinner" aria-hidden="true"></span>
+          <span id="btn-label">Ingresar</span>
+          <span class="material-symbols-outlined btn__icon" id="btn-icon">login</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <p class="login-footer" data-animate style="animation-delay:280ms">© 2024 LogiTrack WMS. All rights reserved.</p>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/script.js"></script>
+</body>
+</html>

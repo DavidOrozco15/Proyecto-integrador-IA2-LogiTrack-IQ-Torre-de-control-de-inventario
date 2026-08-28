@@ -2,6 +2,7 @@ package com.logitrack.service;
 
 import com.logitrack.config.UserContext;
 import com.logitrack.exception.BadRequestException;
+import com.logitrack.exception.ResourceNotFoundException;
 import com.logitrack.model.EstadoOrdenCompra;
 import com.logitrack.model.MovimientoDetalle;
 import com.logitrack.model.MovimientoInventario;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,11 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         if (orden.getCantidad() <= 0) {
             throw new BadRequestException("La cantidad debe ser mayor a 0");
         }
+        if (orden.getPrecioUnitario() == null || orden.getPrecioUnitario().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("El precio unitario debe ser mayor a 0");
+        }
+        // Calcular total en el servidor
+        orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
         String username = UserContext.getUsername();
         return ordenCompraRepository.save(orden);
     }
@@ -74,5 +82,21 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         }
 
         return orden;
+    }
+
+    @Override
+    public List<OrdenCompra> obtenerTodas() {
+        return ordenCompraRepository.findAll();
+    }
+
+    @Override
+    public List<OrdenCompra> obtenerPorEstado(EstadoOrdenCompra estado) {
+        return ordenCompraRepository.findByEstado(estado);
+    }
+
+    @Override
+    public OrdenCompra obtenerPorId(Long id) throws ResourceNotFoundException {
+        return ordenCompraRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("OrdenCompra", "id", id));
     }
 }

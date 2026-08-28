@@ -350,3 +350,22 @@ uvicorn server:app --host 0.0.0.0 --port 8081
 
 **Manual generado para contexto opencode de la casa.**
 **Todas las herramientas, restricciones y estructuras están basadas en la especificación del proyecto LogiTrack IA2 y el PDF oficial "Proyecto IA2 - LogiTrack IQ".**
+
+
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTc4Nzg3ODUzMywiZXhwIjoxNzg3OTY0OTMzfQ.BZVeD-YWQA6ND0CapI8T-2PnQK3YHYTGOVUtGN3mfP4",
+  "tokenType": "Bearer",
+  "userId": 1,
+  "username": "admin",
+  "email": "admin@logitrack.com",
+  "rol": "ADMIN"
+}
+
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZ2VudGVfdXNlciIsImlhdCI6MTc4Nzg3OTQxNiwiZXhwIjoxNzg3OTY1ODE2fQ.QV89YsFhe_zglnypVGkC4OaiRL1c_Kf_aH_SkUFHeHA",
+  "tokenType": "Bearer",
+  "userId": 5,
+  "username": "agente_user",
+  "email": "agente@logitrac.com",
+  "rol": "AGENTE"
+}

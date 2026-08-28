@@ -3,7 +3,6 @@ package com.logitrack.service;
 import com.logitrack.dto.ProductoRiesgoDTO;
 import com.logitrack.dto.StockPorBodegaDTO;
 import com.logitrack.repository.BodegaRepository;
-import com.logitrack.repository.BodegaRepository;
 import com.logitrack.repository.InventarioBodegaRepository;
 import com.logitrack.repository.MovimientoDetalleRepository;
 import com.logitrack.repository.MovimientoInventarioRepository;
@@ -27,17 +26,20 @@ import java.util.stream.Collectors;
 public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsService {
 
     private final ProductoRepository productoRepository;
+    private final BodegaRepository bodegaRepository;
     private final InventarioBodegaRepository inventarioBodegaRepository;
     private final MovimientoDetalleRepository movimientoDetalleRepository;
     private final MovimientoInventarioRepository movimientoInventarioRepository;
     private final OrdenCompraRepository ordenCompraRepository;
 
     public InventarioAnalyticsServiceImpl(ProductoRepository productoRepository,
+                                          BodegaRepository bodegaRepository,
                                           InventarioBodegaRepository inventarioBodegaRepository,
                                           MovimientoDetalleRepository movimientoDetalleRepository,
                                           MovimientoInventarioRepository movimientoInventarioRepository,
                                           OrdenCompraRepository ordenCompraRepository) {
         this.productoRepository = productoRepository;
+        this.bodegaRepository = bodegaRepository;
         this.inventarioBodegaRepository = inventarioBodegaRepository;
         this.movimientoDetalleRepository = movimientoDetalleRepository;
         this.movimientoInventarioRepository = movimientoInventarioRepository;
@@ -138,7 +140,7 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
 
         var hoy = LocalDateTime.now(ZoneId.of("America/Bogota"));
         var ayer = hoy.toLocalDate().minusDays(1);
-        var movimientos = movimientoInventarioRepository.buscarPorRangoFechas(
+        var movimientos = movimientoInventarioRepository.findByFechaBetween(
                 ayer.atStartOfDay(), ayer.atTime(23, 59, 59));
 
         long entradas = movimientos.stream().filter(m -> m.getTipoMovimiento().name().equals("ENTRADA")).count();
