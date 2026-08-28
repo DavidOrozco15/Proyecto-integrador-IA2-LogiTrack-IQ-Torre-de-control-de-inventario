@@ -11,10 +11,12 @@ const ENDPOINTS = {
     login: `${API_BASE}/auth/login`,
     kpis: `${API_BASE}/kpis`,
     productosRiesgo: `${API_BASE}/productos/riesgo`,
+    productos: `${API_BASE}/productos`,
     ordenes: `${API_BASE}/ordenes`,
     resumen: `${API_BASE}/panel/resumen`,
     bodegas: `${API_BASE}/bodegas`,
     bodegasStock: `${API_BASE}/bodegas/stock`,
+    bodegaInventario: (id) => `${API_BASE}/bodegas/${id}/inventario`,
     proveedores: `${API_BASE}/proveedores`,
     ordenPdf: (id) => `${API_BASE}/ordenes/${id}/pdf`,
     ordenEstado: (id) => `${API_BASE}/ordenes/${id}/estado`,
@@ -335,10 +337,18 @@ function renderMovimientosAyer() {
     if (elT) animateValue(elT, m.transferencia || 0);
 
     if (elD && state.data.kpis?.calculadoEn) {
-        const d = new Date(state.data.kpis.calculadoEn);
-        const ayer = new Date(d);
-        ayer.setDate(ayer.getDate() - 1);
-        elD.textContent = ayer.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        try {
+            const d = new Date(state.data.kpis.calculadoEn);
+            if (!isNaN(d.getTime())) {
+                const ayer = new Date(d);
+                ayer.setDate(ayer.getDate() - 1);
+                elD.textContent = ayer.toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            } else {
+                elD.textContent = '--';
+            }
+        } catch {
+            elD.textContent = '--';
+        }
     }
 }
 
@@ -546,7 +556,7 @@ function renderBodegas() {
     const bodegas = state.data.bodegas || [];
 
     if (bodegas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="padding:32px"><p>No hay datos de bodegas disponibles</p></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="padding:32px"><p>No hay datos de bodegas disponibles</p></td></tr>`;
         return;
     }
 
@@ -568,6 +578,172 @@ function renderBodegas() {
                     </div>
                 </td>
                 <td><span class="badge badge-${cls === 'red' ? 'danger' : cls === 'yellow' ? 'warning' : 'success'}">${label}</span></td>
+                <td>
+                    <button class="action-btn action-btn-view" data-action="inventario" data-id="${b.bodegaId}" data-nombre="${b.bodegaNombre}" title="Ver inventario">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                    </button>
+                </td>
+            </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('[data-action="inventario"]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const nombre = btn.dataset.nombre;
+            openInventarioModal(id, nombre);
+        });
+    });
+}
+
+// ========================================
+// Inventario Modal
+// ========================================
+
+function setupInventarioModal() {
+    const modal = document.getElementById('inventarioModal');
+    const closeBtn = document.getElementById('closeInventarioModal');
+    const closeBtn2 = document.getElementById('closeInventarioBtn');
+    [closeBtn, closeBtn2].forEach(btn => { if (btn) btn.addEventListener('click', closeInventarioModal); });
+    if (modal) modal.querySelector('.modal-overlay').addEventListener('click', closeInventarioModal);
+}
+
+async function openInventarioModal(bodegaId, bodegaNombre) {
+    const modal = document.getElementById('inventarioModal');
+    const nombreEl = document.getElementById('inventarioBodegaNombre');
+    const tbody = document.getElementById('inventarioBody');
+    if (!modal || !tbody) return;
+
+    nombreEl.textContent = bodegaNombre;
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px">Cargando inventario...</td></tr>';
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        const data = await apiRequest(ENDPOINTS.bodegaInventario(bodegaId));
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px">No hay productos en esta bodega</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.map((item, i) => `
+            <tr style="animation: slideUp 0.3s ease ${i * 0.04}s both">
+                <td>${item.producto?.nombre || `Producto #${item.productoId}`}</td>
+                <td><strong>${formatNumber(item.stock)}</strong></td>
+                <td>${formatNumber(item.producto?.stock || 0)}</td>
+                <td>${formatCurrency(item.producto?.precio)}</td>
+                <td>${item.producto?.categoria || '--'}</td>
+            </tr>`).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--danger)">Error: ${e.message}</td></tr>`;
+    }
+}
+
+function closeInventarioModal() {
+    const modal = document.getElementById('inventarioModal');
+    if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+}
+
+// ========================================
+// Todos los Productos
+// ========================================
+
+let allProductos = [];
+
+async function loadTodosProductos() {
+    const tbody = document.getElementById('todosProductosBody');
+    const emptyEl = document.getElementById('todosProductosEmpty');
+    const table = document.getElementById('todosProductosTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px">Cargando productos...</td></tr>';
+    table.style.display = 'table';
+    emptyEl.classList.add('hidden');
+
+    try {
+        allProductos = await apiRequest(ENDPOINTS.productos);
+        populateCategorias();
+        setupProductFilters();
+        renderTodosProductos(allProductos);
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--danger)">Error: ${e.message}</td></tr>`;
+    }
+}
+
+function populateCategorias() {
+    const select = document.getElementById('filtroCategoria');
+    if (!select) return;
+    const cats = [...new Set(allProductos.map(p => p.categoria).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Todas</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function setupProductFilters() {
+    const nombre = document.getElementById('filtroNombre');
+    const categoria = document.getElementById('filtroCategoria');
+    const orden = document.getElementById('filtroOrden');
+    const stock = document.getElementById('filtroStock');
+    [nombre, categoria, orden, stock].forEach(el => {
+        if (el) el.removeEventListener('input', applyProductFilters);
+        if (el) el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', applyProductFilters);
+    });
+}
+
+function applyProductFilters() {
+    const nombreVal = document.getElementById('filtroNombre')?.value.toLowerCase() || '';
+    const catVal = document.getElementById('filtroCategoria')?.value || '';
+    const ordenVal = document.getElementById('filtroOrden')?.value || 'nombre-asc';
+    const stockVal = document.getElementById('filtroStock')?.value || '';
+
+    let filtered = allProductos.filter(p => {
+        if (nombreVal && !p.nombre.toLowerCase().includes(nombreVal)) return false;
+        if (catVal && p.categoria !== catVal) return false;
+        if (stockVal === 'sin-stock' && p.stock !== 0) return false;
+        if (stockVal === 'bajo' && (p.stock >= 10 || p.stock === 0)) return false;
+        if (stockVal === 'normal' && p.stock < 10) return false;
+        return true;
+    });
+
+    const [field, dir] = ordenVal.split('-');
+    filtered.sort((a, b) => {
+        let va, vb;
+        if (field === 'nombre') { va = a.nombre; vb = b.nombre; return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va); }
+        if (field === 'precio') { va = a.precio || 0; vb = b.precio || 0; }
+        else if (field === 'stock') { va = a.stock || 0; vb = b.stock || 0; }
+        else if (field === 'categoria') { va = a.categoria || ''; vb = b.categoria || ''; return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va); }
+        else { va = a.id; vb = b.id; }
+        return dir === 'asc' ? va - vb : vb - va;
+    });
+
+    renderTodosProductos(filtered);
+}
+
+function renderTodosProductos(productos) {
+    const tbody = document.getElementById('todosProductosBody');
+    const emptyEl = document.getElementById('todosProductosEmpty');
+    const table = document.getElementById('todosProductosTable');
+    if (!tbody) return;
+
+    if (!productos.length) {
+        tbody.innerHTML = '';
+        table.style.display = 'none';
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    table.style.display = 'table';
+    emptyEl.classList.add('hidden');
+
+    tbody.innerHTML = productos.map((p, i) => {
+        const stockClass = p.stock === 0 ? 'danger' : p.stock < 10 ? 'warning' : 'success';
+        return `
+            <tr style="animation: slideUp 0.3s ease ${i * 0.03}s both">
+                <td>#${p.id}</td>
+                <td><strong>${p.nombre}</strong></td>
+                <td>${p.categoria || '--'}</td>
+                <td><span class="badge badge-${stockClass}">${formatNumber(p.stock)}</span></td>
+                <td>${formatCurrency(p.precio)}</td>
+                <td>${p.proveedorPrincipal?.nombre || '--'}</td>
             </tr>`;
     }).join('');
 }
@@ -710,12 +886,14 @@ function navigateTo(page) {
         p.classList.toggle('active', p.id === `page-${page}`);
     });
 
-    const titles = { dashboard: 'Dashboard', ordenes: 'Ordenes de Compra', productos: 'Productos en Riesgo', bodegas: 'Bodegas' };
+    const titles = { dashboard: 'Dashboard', ordenes: 'Ordenes de Compra', productos: 'Productos en Riesgo', 'todos-productos': 'Todos los Productos', bodegas: 'Bodegas' };
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = titles[page] || 'Dashboard';
 
     state.currentPage = page;
     document.getElementById('sidebar')?.classList.remove('open');
+
+    if (page === 'todos-productos') loadTodosProductos();
 }
 
 // ========================================
@@ -733,9 +911,7 @@ function initDashboard() {
 
     const user = getUser();
     if (user) {
-        const nameEl = document.getElementById('userName');
         const roleEl = document.getElementById('userRole');
-        if (nameEl) nameEl.textContent = user.username;
         if (roleEl) { roleEl.textContent = user.rol; roleEl.className = `role-badge ${user.rol}`; }
     }
 
@@ -760,13 +936,13 @@ function initDashboard() {
         item.addEventListener('click', (e) => { e.preventDefault(); navigateTo(item.dataset.page); });
     });
 
-    // Order filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+    // Order filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', async (e) => {
             e.preventDefault();
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.currentOrderFilter = btn.dataset.status;
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            state.currentOrderFilter = chip.dataset.status;
             await fetchOrdenes(state.currentOrderFilter);
             renderOrdenes();
         });
@@ -779,6 +955,7 @@ function initDashboard() {
     [closePdfModalBtn, closePdfBtn].forEach(btn => { if (btn) btn.addEventListener('click', closePdfModal); });
     if (pdfModal) pdfModal.querySelector('.modal-overlay').addEventListener('click', closePdfModal);
 
+    setupInventarioModal();
     loadDashboard();
 }
 
@@ -804,5 +981,5 @@ async function loadDashboard() {
 window.LogiTrack = {
     apiRequest, login, logout, getToken, getUser, getUserRole, hasRole,
     fetchKPIs, fetchProductosRiesgo, fetchOrdenes, fetchResumen,
-    generateAndOpenPdf, aprobarOrden, navigateTo, state,
+    generateAndOpenPdf, aprobarOrden, navigateTo, openInventarioModal, state,
 };

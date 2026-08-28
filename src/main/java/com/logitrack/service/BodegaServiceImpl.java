@@ -154,10 +154,15 @@ public class BodegaServiceImpl implements BodegaService {
         List<Bodega> bodegas = bodegaRepository.findAll();
         return bodegas.stream().map(bodega -> {
             Integer stockTotal = inventarioBodegaRepository.sumStockByBodegaId(bodega.getId());
+            int capacidad = bodega.getCapacidad() != null ? bodega.getCapacidad() : 0;
+            long stock = stockTotal != null ? stockTotal.longValue() : 0L;
+            double porcentaje = capacidad > 0 ? Math.round(stock * 1000.0 / capacidad) / 10.0 : 0.0;
             return StockPorBodegaDTO.builder()
                     .bodegaId(bodega.getId())
                     .bodegaNombre(bodega.getNombre())
-                    .stockTotal(stockTotal != null ? stockTotal.longValue() : 0L)
+                    .stockTotal(stock)
+                    .capacidad(capacidad)
+                    .porcentajeOcupacion(porcentaje)
                     .build();
         }).collect(Collectors.toList());
     }

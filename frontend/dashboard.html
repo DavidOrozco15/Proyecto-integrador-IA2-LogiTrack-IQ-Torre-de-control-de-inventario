@@ -33,7 +33,6 @@
 
         <div class="header-right">
             <div class="user-info">
-                <span id="userName">Usuario</span>
                 <span class="role-badge" id="userRole">ROL</span>
             </div>
             <button class="btn btn-secondary btn-sm" id="logoutBtn">
@@ -75,7 +74,14 @@
                         <line x1="12" y1="8" x2="12" y2="16"></line>
                         <line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
-                    Productos
+                    Productos en Riesgo
+                </a>
+                <a href="#" class="nav-item" data-page="todos-productos">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    Todos los Productos
                 </a>
                 <a href="#" class="nav-item" data-page="bodegas">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -108,6 +114,7 @@
                         <div class="kpi-content">
                             <span class="kpi-label">Productos en Riesgo</span>
                             <span class="kpi-value" id="kpiProductosRiesgo">--</span>
+                            <span class="kpi-desc">Stock bajo el punto de reorden</span>
                         </div>
                     </article>
 
@@ -120,8 +127,9 @@
                             </svg>
                         </div>
                         <div class="kpi-content">
-                            <span class="kpi-label">Productos en Quiebre</span>
+                            <span class="kpi-label">Productos sin Stock</span>
                             <span class="kpi-value" id="kpiProductosQuiebre">--</span>
+                            <span class="kpi-desc">Stock total igual a 0</span>
                         </div>
                     </article>
 
@@ -136,6 +144,7 @@
                         <div class="kpi-content">
                             <span class="kpi-label">Ordenes por Aprobar</span>
                             <span class="kpi-value" id="kpiOrdenesAprobar">--</span>
+                            <span class="kpi-desc">Estado BORRADOR</span>
                         </div>
                     </article>
 
@@ -147,8 +156,9 @@
                             </svg>
                         </div>
                         <div class="kpi-content">
-                            <span class="kpi-label">Bodegas Activas</span>
+                            <span class="kpi-label">Bodegas Criticas</span>
                             <span class="kpi-value" id="kpiBodegasCriticas">--</span>
+                            <span class="kpi-desc">Ocupacion mayor al 90%</span>
                         </div>
                     </article>
                 </div>
@@ -222,16 +232,29 @@
                     <p class="page-subtitle">Gestion de ordenes por estado</p>
                 </div>
 
+                <div class="order-filters-bar" id="orderFilters">
+                    <button class="filter-chip active" data-status="BORRADOR">
+                        <span class="chip-dot chip-dot-warning"></span>
+                        Borrador
+                    </button>
+                    <button class="filter-chip" data-status="APROBADA">
+                        <span class="chip-dot chip-dot-info"></span>
+                        Aprobadas
+                    </button>
+                    <button class="filter-chip" data-status="RECIBIDA">
+                        <span class="chip-dot chip-dot-success"></span>
+                        Recibidas
+                    </button>
+                    <button class="filter-chip" data-status="CANCELADA">
+                        <span class="chip-dot chip-dot-danger"></span>
+                        Canceladas
+                    </button>
+                    <button class="filter-chip" data-status="">
+                        Todas
+                    </button>
+                </div>
+
                 <div class="section-card">
-                    <div class="section-header" style="border-bottom: none; padding-bottom: 0;">
-                        <div class="order-filters" id="orderFilters">
-                            <button class="filter-btn active" data-status="BORRADOR">Borrador</button>
-                            <button class="filter-btn" data-status="APROBADA">Aprobadas</button>
-                            <button class="filter-btn" data-status="RECIBIDA">Recibidas</button>
-                            <button class="filter-btn" data-status="CANCELADA">Canceladas</button>
-                            <button class="filter-btn" data-status="">Todas</button>
-                        </div>
-                    </div>
                     <div class="table-container">
                         <table class="data-table" id="ordenesTable">
                             <thead>
@@ -299,6 +322,74 @@
                 </div>
             </section>
 
+            <!-- Todos los Productos Page -->
+            <section class="page" id="page-todos-productos">
+                <div class="page-header">
+                    <h2>Todos los Productos</h2>
+                    <p class="page-subtitle">Inventario completo del sistema</p>
+                </div>
+
+                <div class="section-card">
+                    <div class="filters-bar">
+                        <div class="filter-group">
+                            <label class="filter-label">Buscar</label>
+                            <input type="text" id="filtroNombre" class="filter-input" placeholder="Nombre del producto...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Categoria</label>
+                            <select id="filtroCategoria" class="filter-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Ordenar por</label>
+                            <select id="filtroOrden" class="filter-select">
+                                <option value="nombre-asc">Nombre A-Z</option>
+                                <option value="nombre-desc">Nombre Z-A</option>
+                                <option value="precio-asc">Menor Precio</option>
+                                <option value="precio-desc">Mayor Precio</option>
+                                <option value="stock-asc">Menor Stock</option>
+                                <option value="stock-desc">Mayor Stock</option>
+                                <option value="categoria-asc">Categoria</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Stock</label>
+                            <select id="filtroStock" class="filter-select">
+                                <option value="">Todos</option>
+                                <option value="sin-stock">Sin Stock</option>
+                                <option value="bajo">Bajo (&lt;10)</option>
+                                <option value="normal">Normal (&ge;10)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table" id="todosProductosTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Producto</th>
+                                    <th>Categoria</th>
+                                    <th>Stock</th>
+                                    <th>Precio</th>
+                                    <th>Proveedor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="todosProductosBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="empty-state hidden" id="todosProductosEmpty">
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    <p>No hay productos que coincidan con los filtros</p>
+                </div>
+            </section>
+
             <!-- Bodegas Page -->
             <section class="page" id="page-bodegas">
                 <div class="page-header">
@@ -316,6 +407,7 @@
                                     <th>Capacidad</th>
                                     <th>Ocupacion</th>
                                     <th>Estado</th>
+                                    <th>Inventario</th>
                                 </tr>
                             </thead>
                             <tbody id="bodegasBody"></tbody>
@@ -369,6 +461,39 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="confirmCancel">Cancelar</button>
                 <button class="btn btn-danger" id="confirmOk">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+            <!-- Inventario Bodega Modal -->
+    <div class="modal hidden" id="inventarioModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content" style="max-width: 750px;">
+            <div class="modal-header">
+                <h3>Inventario - <span id="inventarioBodegaNombre"></span></h3>
+                <button class="modal-close" id="closeInventarioModal" aria-label="Cerrar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 50vh; overflow-y: auto;">
+                <table class="data-table" id="inventarioTable">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Stock Bodega</th>
+                            <th>Stock Total</th>
+                            <th>Precio</th>
+                            <th>Categoria</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventarioBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="closeInventarioBtn">Cerrar</button>
             </div>
         </div>
     </div>

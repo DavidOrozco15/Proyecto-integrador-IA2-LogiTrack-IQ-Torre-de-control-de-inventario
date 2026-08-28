@@ -1,524 +1,585 @@
-# LogiTrack WMS - Sistema de Gestión y Auditoría de Bodegas
+# LogiTrack IQ
 
-![LogiTrack Logo](https://img.shields.io/badge/LogiTrack-WMS-blue?style=for-the-badge)
-![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4-green?style=flat-square)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square)
-![JWT](https://img.shields.io/badge/JWT-Auth-red?style=flat-square)
-![Swagger](https://img.shields.io/badge/Swagger-OpenAPI%203-brightgreen?style=flat-square)
+> Torre de Control de Inventario — Gestión Inteligente de Inventarios para LogiTrack WMS
 
----
+LogiTrack IQ es un sistema completo de gestión de inventarios construido sobre la plataforma LogiTrack WMS existente. Agrega capacidades de inteligencia artificial para detectar productos en riesgo de quiebre de stock, gestionar órdenes de compra automáticas y generar reportes diarios automatizados.
 
-## 📋 Descripción del Proyecto
-
-**LogiTrack S.A.** es una empresa que administra múltiples bodegas distribuidas en distintas ciudades, encargadas de almacenar productos y gestionar movimientos de inventario (entradas, salidas y transferencias).
-
-Este sistema backend centralizado desarrollado con **Spring Boot** permite:
-
-- ✅ Controlar todos los movimientos entre bodegas
-- ✅ Registrar automáticamente los cambios (auditorías)
-- ✅ Proteger la información con autenticación JWT
-- ✅ Ofrecer endpoints REST documentados y seguros
-- ✅ Generar reportes auditables de los cambios realizados por cada usuario
+**Desarrollado por:** David Orozco
 
 ---
 
-## 🏗️ Arquitectura del Proyecto
+## Arquitectura General
 
 ```
-src/
-├── main/
-│   ├── java/com/logitrack/
-│   │   ├── config/          → Configuraciones (OpenAPI, Web, SpringContext, UserContext)
-│   │   ├── controller/      → Controladores REST
-│   │   ├── dto/             → Objetos de transferencia de datos
-│   │   ├── exception/       → Manejo global de excepciones
-│   │   ├── listener/        → Listeners JPA para auditoría automática
-│   │   ├── model/           → Entidades JPA
-│   │   ├── repository/      → Repositorios Spring Data JPA
-│   │   ├── security/        → Seguridad JWT + Spring Security
-│   │   └── service/         → Lógica de negocio
-│   └── resources/
-│       ├── static/          → Frontend HTML/CSS/JS
-│       ├── application.properties
-│       ├── schema.sql
-│       └── data.sql
-└── test/
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (HTML/CSS/JS)                   │
+│              Servido desde Spring Boot :8080                 │
+├─────────────────────────────────────────────────────────────┤
+│              Backend Spring Boot (Java 17)                  │
+│              REST API + JWT Auth + JPA                       │
+│              Puerto: 8080                                   │
+├──────────┬──────────────────────────────┬──────────────────┤
+│          │                              │                  │
+│  PostgreSQL (Supabase)         MCP Server (Python)    n8n (Automatización)
+│  Base de datos remota          Puerto: 8081           Puerto: 5678
+│  Esquema: proyecto             FastAPI + JWT           Workflow diario 6AM
+│                                                        Agente IA
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
+### Flujo de Datos
 
-## 🚀 Tecnologías Utilizadas
-
-| Tecnología | Versión | Propósito |
-|------------|---------|-----------|
-| Java | 17 | Lenguaje de programación |
-| Spring Boot | 3.4 | Framework principal |
-| Spring Security | 6.x | Autenticación y autorización |
-| Spring Data JPA | 3.x | Persistencia de datos |
-| PostgreSQL | 16 | Base de datos relacional |
-| JWT (jjwt) | 0.11.5 | Tokens de autenticación |
-| Swagger/OpenAPI | 3.0.3 | Documentación de API |
-| Lombok | Última | Reducción de código boilerplate |
-| Jakarta Validation | Última | Validaciones de datos |
-| HTML/CSS/JS | - | Frontend básico de prueba |
+1. **Frontend → Backend**: El usuario interactúa con la interfaz web. Las peticiones HTTP incluyen el token JWT en el header `Authorization`.
+2. **Backend → PostgreSQL**: Spring Boot ejecuta queries JPA contra Supabase (PostgreSQL托管).
+3. **n8n → MCP → Backend**: Cada día a las 6:00 AM, n8n dispara un workflow que consulta el MCP server para obtener KPIs, productos en riesgo y bodegas críticas. El MCP se autentica como `agente_user` contra el backend.
+4. **n8n → Backend**: El agente IA en n8n decide crear órdenes de compra y publicar un resumen en el panel.
 
 ---
 
-## ⚙️ Requisitos Previos
+## Stack Tecnológico
 
-- **Java 17** o superior
-- **Maven 3.8+** (incluye `mvnw` en el proyecto)
-- **PostgreSQL 16** o superior
-- Conexión a internet para descargar dependencias
+| Capa | Tecnología | Versión | Propósito |
+|------|-----------|---------|-----------|
+| **Backend** | Java + Spring Boot | 17 / 3.2.4 | REST API, JWT Auth, JPA/Hibernate |
+| **Base de Datos** | PostgreSQL (Supabase) | - | Almacenamiento persistente |
+| **Frontend** | HTML, CSS, JavaScript | Vanilla | Interfaz de usuario (SPA-like) |
+| **MCP Server** | Python + FastAPI | 3.11 | Intermediario para agente IA |
+| **Automatización** | n8n | latest | Workflow diario de inventario |
+| **Contenedores** | Docker + Docker Compose | - | Orquestación de servicios |
+| **Documentación** | Swagger/OpenAPI | 3.0 | API docs en `/swagger-ui.html` |
 
 ---
 
-## 🔧 Instalación y Ejecución
+## Requisitos Previos
 
-### 1. Clonar el repositorio
+- Docker y Docker Compose instalados
+- Conexión a internet (base de datos en Supabase)
+- Puerto 8080, 8081 y 5678 disponibles
+
+---
+
+## Ejecución
+
+### Iniciar todos los servicios
 
 ```bash
-git clone https://github.com/tu-usuario/logitrack.git
-cd logitrack
+docker-compose up -d --build
 ```
 
-### 2. Configurar la base de datos
+Esto levantará 3 contenedores:
 
-Editar el archivo `src/main/resources/application.properties` con tus credenciales de PostgreSQL:
+| Servicio | URL | Descripción |
+|----------|-----|-------------|
+| **Backend + Frontend** | http://localhost:8080 | API REST y panel web |
+| **Swagger UI** | http://localhost:8080/swagger-ui.html | Documentación interactiva de la API |
+| **MCP Server** | http://localhost:8081 | Herramientas para el agente IA |
+| **n8n** | http://localhost:5678 | Automatización de workflows |
 
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/logitrack
-spring.datasource.username=tu_usuario
-spring.datasource.password=tu_contraseña
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.properties.hibernate.default_schema=proyecto
-```
-
-### 3. Compilar y ejecutar
-
-```bash
-# Linux/Mac
-./mvnw spring-boot:run
-
-# Windows
-mvnw.cmd spring-boot:run
-```
-
-O también:
-
-```bash
-./mvnw clean package -DskipTests
-java -jar target/logitrak-0.0.1-SNAPSHOT.jar
-```
-
-### 4. Acceder a la aplicación
-
-| Recurso | URL |
-|---------|-----|
-| **Frontend** | [http://localhost:8080](http://localhost:8080) |
-| **Swagger UI** | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) |
-| **API Docs** | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) |
-
----
-
-## 🔐 Credenciales de Prueba
+### Credenciales
 
 | Usuario | Contraseña | Rol |
 |---------|-----------|-----|
-| `admin` | `admin123` | **ADMIN** |
-| `corcho` | `corcho123` | **EMPLEADO** |
+| `admin` | `admin123` | Administrador |
+| `agente_user` | `admin123` | Agente IA (usado por n8n/MCP) |
 
-> **Nota:** Las contraseñas están codificadas con BCrypt en `data.sql`. Deberás registrar nuevos usuarios o ajustar las contraseñas según corresponda.
-
----
-
-## 📚 Endpoints de la API
-
-### Autenticación (`/api/auth`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `POST` | `/api/auth/login` | Iniciar sesión | Público |
-| `POST` | `/api/auth/register` | Registrar nuevo usuario | Público |
-| `POST` | `/api/auth/register-empleado` | Registrar empleado | **ADMIN** |
-
-### Bodegas (`/api/bodegas`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/bodegas` | Listar todas las bodegas | ADMIN, EMPLEADO |
-| `GET` | `/api/bodegas/{id}` | Obtener bodega por ID | ADMIN, EMPLEADO |
-| `GET` | `/api/bodegas/buscar?nombre=` | Buscar bodega por nombre | ADMIN, EMPLEADO |
-| `GET` | `/api/bodegas/stock` | Obtener stock de todas las bodegas | ADMIN, EMPLEADO |
-| `GET` | `/api/bodegas/{id}/inventario` | Obtener inventario de una bodega | ADMIN, EMPLEADO |
-| `POST` | `/api/bodegas` | Crear nueva bodega | **ADMIN** |
-| `PUT` | `/api/bodegas/{id}` | Actualizar bodega | ADMIN, EMPLEADO |
-| `DELETE` | `/api/bodegas/{id}` | Eliminar bodega | **ADMIN** |
-
-### Productos (`/api/productos`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/productos` | Listar productos (con filtros) | ADMIN, EMPLEADO |
-| `GET` | `/api/productos/{id}` | Obtener producto por ID | ADMIN, EMPLEADO |
-| `GET` | `/api/productos/bajo-stock?umbral=10` | Productos con stock bajo | ADMIN, EMPLEADO |
-| `GET` | `/api/productos/con-inventario` | Productos con inventario por bodega | ADMIN, EMPLEADO |
-| `GET` | `/api/productos/{id}/con-inventario` | Producto con inventario por ID | ADMIN, EMPLEADO |
-| `POST` | `/api/productos` | Crear nuevo producto | ADMIN, EMPLEADO |
-| `POST` | `/api/productos/con-inventario` | Crear producto con inventario inicial | ADMIN, EMPLEADO |
-| `PUT` | `/api/productos/{id}` | Actualizar producto | ADMIN, EMPLEADO |
-| `PUT` | `/api/productos/{id}/con-inventario` | Actualizar producto con inventario | ADMIN, EMPLEADO |
-| `DELETE` | `/api/productos/{id}` | Eliminar producto | **ADMIN** |
-
-### Movimientos de Inventario (`/api/movimientos`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/movimientos` | Listar todos los movimientos | Autenticado |
-| `GET` | `/api/movimientos/{id}` | Obtener movimiento por ID | Autenticado |
-| `GET` | `/api/movimientos/tipo/{tipo}` | Filtrar por tipo (ENTRADA, SALIDA, TRANSFERENCIA) | Autenticado |
-| `GET` | `/api/movimientos/rango?desde=&hasta=` | Filtrar por rango de fechas | Autenticado |
-| `GET` | `/api/movimientos/bodega/{bodegaId}` | Filtrar por bodega | Autenticado |
-| `POST` | `/api/movimientos` | Registrar nuevo movimiento | Autenticado |
-
-### Auditoría (`/api/auditorias`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/auditorias` | Listar todas las auditorías | **ADMIN** |
-| `GET` | `/api/auditorias/{id}` | Obtener auditoría por ID | **ADMIN** |
-| `GET` | `/api/auditorias/entidad/{entidad}` | Filtrar por entidad afectada | **ADMIN** |
-| `GET` | `/api/auditorias/usuario/{usuarioId}` | Filtrar por usuario | **ADMIN** |
-| `GET` | `/api/auditorias/operacion/{tipo}` | Filtrar por tipo de operación | **ADMIN** |
-
-### Reportes (`/api/reportes`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/reportes/resumen?dias=30&limit=20` | Resumen general del sistema | Autenticado |
-
-### Usuarios (`/api/usuarios`)
-
-| Método | Endpoint | Descripción | Acceso |
-|--------|----------|-------------|--------|
-| `GET` | `/api/usuarios` | Listar todos los usuarios | Autenticado |
-
----
-
-## 📸 Capturas de Swagger
-
-### Vista General de la API
-
-![Swagger - Vista General](./docs/swagger-screenshots/swaggerPrincipal.png)
-
-### Inicio de Sesión
-
-![Swagger - Logueo](./docs/swagger-screenshots/iniciosesion.png)
-
-### Endpoints Protegidos con JWT
-
-![Swagger - Autenticación JWT](./docs/swagger-screenshots/autenticacion.png)
-
----
-
-## 🧪 Ejemplos de Uso
-
-### 1. Login (obtener token JWT)
+### Verificar el estado
 
 ```bash
+# Ver contenedores corriendo
+docker-compose ps
+
+# Ver logs del backend
+docker-compose logs -f backend
+
+# Ver logs del MCP server
+docker-compose logs -f mcp
+
+# Ver logs de n8n
+docker-compose logs -f n8n
+```
+
+### Detener servicios
+
+```bash
+docker-compose down
+```
+
+---
+
+## Estructura del Proyecto
+
+```
+Proyecto_SpringBoot_LogiTrack/
+├── src/
+│   └── main/
+│       ├── java/com/logitrack/
+│       │   ├── config/          # Configuración (CORS, OpenAPI, UserContext)
+│       │   ├── controller/      # 10 controladores REST
+│       │   ├── dto/             # 12 Data Transfer Objects
+│       │   ├── exception/       # Manejo de excepciones globales
+│       │   ├── listener/        # Event-driven audit (JPA listeners)
+│       │   ├── model/           # 18 entidades JPA + enums
+│       │   ├── repository/      # 10 repositorios Spring Data
+│       │   ├── security/        # JWT filter, token provider, SecurityConfig
+│       │   ├── service/         # 17 servicios (interfaces + implementaciones)
+│       │   └── util/            # Utilidades (fechas Bogotá)
+│       └── resources/
+│           ├── application.properties   # Config Spring Boot
+│           ├── data.sql                 # Datos semilla (30 productos, 5 bodegas)
+│           ├── schema.sql               # DDL
+│           └── static/                  # Frontend servido por Spring Boot
+│               ├── css/styles.css       # Estilos dark-theme
+│               ├── js/app.js            # Lógica del frontend
+│               ├── dashboard.html       # Dashboard principal
+│               ├── login.html           # Página de login
+│               └── ...                  # Otras páginas
+├── frontend/                     # Frontend standalone (copia para desarrollo)
+├── mcp-server/
+│   ├── server.py                 # FastAPI con 9 herramientas MCP
+│   ├── config.yaml               # Configuración del MCP server
+│   └── Dockerfile
+├── n8n/
+│   └── resumen-diario-inventario.json  # Workflow n8n exportado
+├── docs/                         # Documentación del proyecto
+│   ├── documento-arquitectura.md
+│   └── sdd/                      # Software Design Document
+├── docker-compose.yml            # Orquestación de 3 servicios
+├── Dockerfile                    # Multi-stage build (backend)
+├── pom.xml                       # Dependencias Maven
+└── skills/
+    └── operacion-logitrack/
+        └── SKILL.md              # Definición del skill del agente IA
+```
+
+---
+
+## Modelo de Datos
+
+### Entidades Principales
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Usuario    │     │   Bodega     │     │  Producto    │
+├──────────────┤     ├──────────────┤     ├──────────────┤
+│ id           │     │ id           │     │ id           │
+│ username     │     │ nombre       │     │ nombre       │
+│ password     │     │ direccion    │     │ sku          │
+│ rol          │     │ capacidadMax │     │ precioUnit   │
+│ email        │     │ activa       │     │ stockTotal   │
+│ creadoEn     │     │ creadoEn     │     │ ptoreorden   │
+│              │     │              │     │ categoria    │
+└──────────────┘     └──────────────┘     │ activo       │
+                                          └──────┬───────┘
+                                                 │
+                    ┌──────────────┐     ┌────────┴────────┐
+                    │   Proveedor  │     │InventarioBodega │
+                    ├──────────────┤     ├─────────────────┤
+                    │ id           │     │ id              │
+                    │ nombre       │     │ producto (FK)   │
+                    │ nit          │     │ bodega (FK)     │
+│ email          │     │ stock         │
+│ telefono       │     │ fechaActualiz │
+│ direccion      │     └─────────────────┘
+│ contacto       │
+│ activo         │     ┌──────────────────────┐
+└──────────────┘     │ MovimientoInventario  │
+                     ├──────────────────────┤
+                     │ id                   │
+                     │ tipo (ENTRADA/SALIDA/│
+                     │       TRASLADO)      │
+                     │ bodegaOrigen (FK)    │
+                     │ bodegaDestino (FK)   │
+                     │ usuario (FK)         │
+                     │ observaciones        │
+                     │ creadoEn             │
+                     │ fechaMovimiento      │
+                     └──────────┬───────────┘
+                                │ 1:N
+                     ┌──────────┴───────────┐
+                     │  MovimientoDetalle   │
+                     ├──────────────────────┤
+                     │ id                   │
+                     │ movimiento (FK)      │
+                     │ producto (FK)        │
+                     │ cantidad             │
+                     │ precioUnitario       │
+                     └──────────────────────┘
+
+┌──────────────────────┐     ┌──────────────────────┐
+│    OrdenCompra       │     │    ResumenPanel      │
+├──────────────────────┤     ├──────────────────────┤
+│ id                   │     │ id                   │
+│ estado (BORRADOR/    │     │ titulo               │
+│   PENDIENTE/APROBADA/│     │ contenido            │
+│   RECIBIDA/CANCELADA)│     │ contenidoJson        │
+│ proveedor (FK)       │     │ tipoResumen          │
+│ usuarioSolicitante   │     │ autor                │
+│ totalEstimado        │     │ creadoEn             │
+│ observaciones        │     │                      │
+│ creadoPor            │     └──────────────────────┘
+│ pdfRuta              │
+│ pdfFechaGeneracion   │     ┌──────────────────────┐
+│ creadoEn             │     │    Auditoria         │
+└──────────┬───────────┘     ├──────────────────────┤
+           │ 1:N             │ id                   │
+┌──────────┴───────────┐     │ usuario (FK)         │
+│ OrdenCompraDetalle   │     │ tipoOperacion        │
+├──────────────────────┤     │ entidad              │
+│ id                   │     │ entidadId            │
+│ orden (FK)           │     │ detalles             │
+│ producto (FK)        │     │ direccionIp          │
+│ cantidad             │     │ creadoEn             │
+│ precioUnitario       │     └──────────────────────┘
+└──────────────────────┘
+```
+
+### Enums
+
+| Enum | Valores |
+|------|---------|
+| **Rol** | `ADMIN`, `EMPLEADO`, `AGENTE` |
+| **TipoMovimiento** | `ENTRADA`, `SALIDA`, `TRASLADO` |
+| **TipoOperacion** | `CREACION`, `ACTUALIZACION`, `ELIMINACION`, `LOGIN`, `CONSULTA` |
+| **EstadoOrdenCompra** | `BORRADOR`, `PENDIENTE`, `APROBADA`, `RECIBIDA`, `CANCELADA` |
+| **SeveridadAlerta** | `BAJA`, `MEDIA`, `ALTA`, `CRITICA` |
+| **TipoAccionSugerida** | `REABASTECER`, `TRASLADAR`, `CANCELAR` |
+
+---
+
+## API REST
+
+### Autenticación
+
+```bash
+# Login
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "admin123"
-  }'
+  -d '{"username":"admin","password":"admin123"}'
+
+# Respuesta: { "token": "eyJ...", "rol": "ADMIN", "username": "admin" }
+
+# Usar token en peticiones subsecuentes
+curl http://localhost:8080/api/productos \
+  -H "Authorization: Bearer eyJ..."
 ```
 
-**Respuesta:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
-  "tokenType": "Bearer",
-  "userId": 1,
-  "username": "admin",
-  "email": "admin@logitrac.com",
-  "rol": "ADMIN"
-}
-```
+### Endpoints Principales
 
-### 2. Listar bodegas (con token JWT)
+| Método | Endpoint | Descripción | Roles |
+|--------|----------|-------------|-------|
+| POST | `/api/auth/login` | Iniciar sesión | Público |
+| POST | `/api/auth/registrar` | Registrar usuario | ADMIN |
+| GET | `/api/usuarios` | Listar usuarios | ADMIN |
+| GET | `/api/productos` | Listar productos | Todos |
+| GET | `/api/productos/{id}` | Producto por ID | Todos |
+| POST | `/api/productos` | Crear producto | ADMIN |
+| PUT | `/api/productos/{id}` | Actualizar producto | ADMIN |
+| GET | `/api/bodegas` | Listar bodegas | Todos |
+| GET | `/api/bodegas/stock` | Stock por bodega | Todos |
+| GET | `/api/bodegas/{id}/inventario` | Inventario de bodega | Todos |
+| POST | `/api/movimientos` | Crear movimiento | ADMIN, EMPLEADO |
+| GET | `/api/movimientos` | Listar movimientos | Todos |
+| GET | `/api/movimientos/{id}/pdf` | Descargar PDF de movimiento | Todos |
+| POST | `/api/ordenes-compra` | Crear orden de compra | ADMIN, EMPLEADO |
+| GET | `/api/ordenes-compra` | Listar órdenes | Todos |
+| GET | `/api/ordenes-compra/{id}` | Orden por ID | Todos |
+| PUT | `/api/ordenes-compra/{id}/aprobar` | Aprobar orden | ADMIN |
+| PUT | `/api/ordenes-compra/{id}/recibir` | Recibir orden | ADMIN |
+| PUT | `/api/ordenes-compra/{id}/cancelar` | Cancelar orden | ADMIN |
+| GET | `/api/ordenes-compra/{id}/pdf` | Descargar PDF de orden | Todos |
+| GET | `/api/proveedores` | Listar proveedores | Todos |
+| POST | `/api/proveedores` | Crear proveedor | ADMIN |
+| GET | `/api/kpis` | KPIs del dashboard | Todos |
+| GET | `/api/kpis/riesgos` | Productos en riesgo | Todos |
+| GET | `/api/kpis/bodegas-criticas` | Bodegas con occupancy >=90% | Todos |
+| GET | `/api/panel-resumen` | Resumen del panel | Todos |
+| POST | `/api/panel-resumen` | Publicar resumen | AGENTE, ADMIN |
+| GET | `/api/auditoria` | Log de auditoría | ADMIN |
+
+### Ejemplos con curl
 
 ```bash
-curl -X GET http://localhost:8080/api/bodegas \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
-```
+# Listar productos
+curl http://localhost:8080/api/productos \
+  -H "Authorization: Bearer $TOKEN"
 
-### 3. Crear un producto
-
-```bash
-curl -X POST http://localhost:8080/api/productos \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
-  -d '{
-    "nombre": "Mouse Inalámbrico Logitech",
-    "categoria": "Perifericos",
-    "stock": 50,
-    "precio": 35.99
-  }'
-```
-
-### 4. Registrar un movimiento de entrada
-
-```bash
+# Crear movimiento de entrada
 curl -X POST http://localhost:8080/api/movimientos \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
   -d '{
-    "tipoMovimiento": "ENTRADA",
-    "bodegaDestino": {"id": 1},
+    "tipo": "ENTRADA",
+    "bodegaOrigenId": 1,
+    "observaciones": "Ingreso de mercadería",
     "detalles": [
-      {
-        "producto": {"id": 1},
-        "cantidad": 10
-      }
+      {"productoId": 1, "cantidad": 50, "precioUnitario": 15000}
     ]
   }'
-```
 
-### 5. Consultar productos con stock bajo
+# Crear orden de compra
+curl -X POST http://localhost:8080/api/ordenes-compra \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proveedorId": 1,
+    "observaciones": "Reabastecimiento urgente",
+    "detalles": [
+      {"productoId": 1, "cantidad": 100, "precioUnitario": 15000}
+    ]
+  }'
 
-```bash
-curl -X GET "http://localhost:8080/api/productos/bajo-stock?umbral=10" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
-```
+# Aprobar orden de compra
+curl -X PUT http://localhost:8080/api/ordenes-compra/1/aprobar \
+  -H "Authorization: Bearer $TOKEN"
 
-### 6. Obtener resumen general
-
-```bash
-curl -X GET "http://localhost:8080/api/reportes/resumen?dias=30&limit=20" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
+# Obtener KPIs
+curl http://localhost:8080/api/kpis \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
 
-## 🗄️ Estructura de la Base de Datos
+## Datos Semilla (data.sql)
 
-### Diagrama Entidad-Relación
+El sistema se inicializa automáticamente con datos de prueba consistentes:
 
-```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  usuarios   │     │    bodegas       │     │  productos  │
-├─────────────┤     ├──────────────────┤     ├─────────────┤
-│ id (PK)     │◄────│ encargado_id     │     │ id (PK)     │
-│ username    │     │ id (PK)          │     │ nombre      │
-│ email       │     │ nombre           │     │ categoria   │
-│ password    │     │ ubicacion        │     │ stock       │
-│ rol         │     │ capacidad        │     │ precio      │
-└─────────────┘     └──────────────────┘     └─────────────┘
-       │                     │                       │
-       │                     │                       │
-       ▼                     ▼                       ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│   movimientos    │  │inventario_bodega │  │movimiento_detalle│
-├──────────────────┤  ├──────────────────┤  ├──────────────────┤
-│ id (PK)          │  │ id (PK)          │  │ id (PK)          │
-│ fecha            │  │ producto_id (FK) │  │ movimiento_id(FK)│
-│ tipo_movimiento  │  │ bodega_id (FK)   │  │ producto_id (FK) │
-│ usuario_id (FK)  │  │ stock            │  │ cantidad         │
-│ bodega_origen(FK)│  └──────────────────┘  └──────────────────┘
-│ bodega_destino(FK)│
-└──────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│   auditorias     │
-├──────────────────┤
-│ id (PK)          │
-│ tipo_operacion   │
-│ fecha_hora       │
-│ usuario_id (FK)  │
-│ entidad_afectada │
-│ entidad_id       │
-│ valores_anteriores│
-│ valores_nuevos   │
-└──────────────────┘
-```
+| Entidad | Cantidad | Detalles |
+|---------|----------|----------|
+| **Productos** | 30 | 6 categorías (Electrónica, Periféricos, Almacenamiento, Redes, Impresión, Audio) |
+| **Bodegas** | 5 | Central (92.1% - CRÍTICA), Norte, Sur, Este, Oeste |
+| **Proveedores** | 6 | TechSupply, Importadora Global, etc. |
+| **Usuarios** | 3 | admin (ADMIN), agente_user (AGENTE), empleado1 (EMPLEADO) |
+| **Movimientos** | 32 | 7 de ayer, 25 de hoy (varias horas) |
+| **Detalles de movimiento** | 62 | Stock consistente con inventario |
+| **Órdenes de compra** | 1 | En estado BORRADOR |
+| **Inventarios por bodega** | 150 | Stock distribuido en 5 bodegas × 30 productos |
 
-### Tablas
+### Bodegas Críticas
 
-| Tabla | Descripción |
-|-------|-------------|
-| `usuarios` | Usuarios del sistema (ADMIN/EMPLEADO) |
-| `bodegas` | Bodegas registradas con ubicación y capacidad |
-| `productos` | Catálogo de productos con stock y precio |
-| `movimientos` | Movimientos de inventario (entrada, salida, transferencia) |
-| `movimiento_detalles` | Detalle de productos y cantidades por movimiento |
-| `inventario_bodega` | Stock de cada producto por bodega |
-| `auditorias` | Registro de auditoría automática de cambios |
+| Bodega | Capacidad | Stock | Ocupación | Estado |
+|--------|-----------|-------|-----------|--------|
+| Bodega Central | 380 | 350 | **92.1%** | CRÍTICA |
+| Bodega Norte | 200 | 74 | 37.0% | Normal |
+| Bodega Sur | 150 | 78 | 52.0% | Normal |
+| Bodega Este | 100 | 38 | 38.0% | Normal |
+| Bodega Oeste | 170 | 74 | 43.5% | Normal |
+
+### Productos en Riesgo (stock <= punto de reorden)
+
+| Producto | SKU | Stock Total | Pto. Reorden | Estado |
+|----------|-----|-------------|--------------|--------|
+| Teclado Keychron K2 | KBD-K2-BT | 2 | 3 | EN RIESGO |
+| Micrófono Blue Yeti | MIC-BLU-YETI | 1 | 3 | EN RIESGO |
 
 ---
 
-## 🔒 Seguridad
+## Frontend
 
-- **Autenticación:** JWT (JSON Web Tokens) con tokens de 24 horas de duración
-- **Autorización:** Basada en roles (ADMIN / EMPLEADO)
-- **Protección de rutas:** Endpoints protegidos según el rol del usuario
-- **Contraseñas:** Encriptadas con BCrypt
-- **Manejo de errores:** Respuestas JSON personalizadas para errores 400, 401, 403, 404 y 500
+### Páginas Disponibles
+
+| Página | URL | Descripción |
+|--------|-----|-------------|
+| Login | `/login.html` | Inicio de sesión |
+| Dashboard | `/dashboard.html` | Panel principal con KPIs, bodegas, resumen |
+| Órdenes de Compra | `/dashboard.html#ordenes` | Gestión de órdenes con filtros y acciones |
+| Productos en Riesgo | `/dashboard.html#riesgo` | Productos por debajo del punto de reorden |
+| Todos los Productos | `/dashboard.html#todos` | Catálogo completo con filtros |
+| Bodegas | `/dashboard.html#bodegas` | Estado de las 5 bodegas con inventario |
+| Auditoría | `/html/auditoria.html` | Log de actividades (solo ADMIN) |
+
+### Funcionalidades del Frontend
+
+- **Dark theme** con efectos glassmorphism y animaciones
+- **Contadores animados** en las tarjetas KPI
+- **Filtros** por categoría, nombre, ordenamiento y nivel de stock
+- **Órdenes de compra**: Chips de filtrado (Borrador/Aprobadas/Recibidas/Canceladas/Todas) + botones de acción (Aprobar, Recibir, Cancelar)
+- **PDF generation**: POST genera el PDF → GET lo descarga
+- **Modal de inventario por bodega**: Muestra 5 columnas (Producto, Stock Bodega, Stock Total, Precio, Categoría)
+- **Responsive**: Se adapta a diferentes tamaños de pantalla
+
+---
+
+## MCP Server (Model Context Protocol)
+
+El MCP server es un intermediario FastAPI que permite al agente IA de n8n interactuar con el backend de forma segura.
+
+### Herramientas Disponibles (9)
+
+| # | Herramienta | Método | Descripción |
+|---|------------|--------|-------------|
+| 1 | `consultar_stock_producto` | GET | Consultar stock de un producto por ID |
+| 2 | `consultar_bodegas_criticas` | GET | Bodegas con ocupación >= 90% |
+| 3 | `consultar_productos_en_riesgo` | GET | Productos por debajo del punto de reorden |
+| 4 | `consultar_proveedores` | GET | Listar todos los proveedores activos |
+| 5 | `consultar_bodega_sugerida/{productoId}` | GET | Bodega con menor stock para un producto |
+| 6 | `consultar_kpis` | GET | KPIs del dashboard |
+| 7 | `crear_orden_borrador` | POST | Crear orden de compra en estado BORRADOR |
+| 8 | `publicar_resumen` | POST | Publicar resumen en el panel |
+| 9 | `consultar_ordenes_borrador` | GET | Listar órdenes en estado BORRADOR |
+
+### Autenticación del MCP
+
+El MCP server se autentica como `agente_user` contra el backend:
+
+```python
+# Internamente hace login y obtiene JWT
+response = requests.post(f"{API_BASE_URL}/auth/login", json={
+    "username": "agente_user",
+    "password": "admin123"
+})
+token = response.json()["token"]
+```
+
+---
+
+## n8n - Automatización Diaria
+
+### Workflow: Resumen Diario de Inventario
+
+- **Schedule**: Diario a las 6:00 AM (America/Bogota)
+- **Archivo**: `n8n/resumen-diario-inventario.json`
+
+### Flujo del Workflow
+
+1. **Schedule Trigger** → Se ejecuta diario a las 6:00 AM
+2. **Config MCP** → Establece la URL base del MCP server
+3. **GET KPIs** → Consulta los KPIs actuales del dashboard
+4. **GET Productos en Riesgo** → Obtiene la lista de productos con stock bajo
+5. **GET Bodegas Críticas** → Identifica bodegas con ocupación >= 90%
+6. **Loop por cada producto en riesgo** → Para cada producto:
+   - Consulta el stock actual
+   - Consulta la bodega sugerida (menor stock)
+   - Crea una orden de compra BORRADOR si es necesario
+7. **Publish Summary** → Publica un resumen estructurado en el panel
+
+### Configuración de n8n
+
+Acceder a n8n: http://localhost:5678
+
+Para importar el workflow:
+1. Ir a Workflows → Import from File
+2. Seleccionar `n8n/resumen-diario-inventario.json`
+3. Activar el workflow
+
+---
+
+## Seguridad
+
+### JWT Authentication
+
+- **Filtro**: `JwtAuthenticationFilter` se ejecuta antes de cada petición
+- **Token Provider**: `JwtTokenProvider` genera y valida tokens
+- **Secret**: Configurado en `application.properties` (`jwt.secret`)
+- **Expiración**: 24 horas (`jwt.expiration-ms=86400000`)
+- **UserContext**: `ThreadLocal` almacena el usuario actual desde el JWT
 
 ### Roles y Permisos
 
-| Recurso | ADMIN | EMPLEADO |
-|---------|-------|----------|
-| Bodegas (GET) | ✅ | ✅ |
-| Bodegas (POST) | ✅ | ❌ |
-| Bodegas (DELETE) | ✅ | ❌ |
-| Productos (GET) | ✅ | ✅ |
-| Productos (POST) | ✅ | ✅ |
-| Productos (DELETE) | ✅ | ❌ |
-| Movimientos | ✅ | ✅ |
-| Auditorías | ✅ | ❌ |
-| Reportes | ✅ | ✅ |
-| Registrar Empleados | ✅ | ❌ |
+| Recurso | ADMIN | EMPLEADO | AGENTE |
+|---------|-------|----------|--------|
+| Lectura (GET) | ✅ | ✅ | ✅ |
+| Crear productos | ✅ | ❌ | ❌ |
+| Crear movimientos | ✅ | ✅ | ❌ |
+| Aprobar/Recibir/Cancelar órdenes | ✅ | ❌ | ❌ |
+| Registrar usuarios | ✅ | ❌ | ❌ |
+| Publicar resumen | ✅ | ❌ | ✅ |
+| Auditoría | ✅ | ❌ | ❌ |
+
+### Auditoría Automática
+
+Cada operación de escritura en la base de datos genera automáticamente un registro de auditoría mediante JPA EntityListeners:
+
+- `AuditEntityListener` → Captura eventos de creación/actualización/eliminación
+- `AuditoriaEventListener` → Procesa el evento y guarda el registro
+- Tabla `auditoria` almacena: usuario, tipo operación, entidad, ID, detalles, IP, fecha
 
 ---
 
-## 🎨 Frontend
+## Documentación Adicional
 
-El proyecto incluye un frontend básico en HTML/CSS/JS ubicado en `src/main/resources/static/` que permite:
-
-- **Login** con autenticación JWT
-- **Dashboard** con resumen general
-- **Gestión de bodegas** (CRUD)
-- **Gestión de productos** (CRUD)
-- **Movimientos de inventario** (registro y consulta)
-- **Auditoría** (solo ADMIN)
-
-Para acceder: [http://localhost:8080](http://localhost:8080)
+| Documento | Ubicación | Contenido |
+|-----------|-----------|-----------|
+| Arquitectura | `docs/documento-arquitectura.md` | Diagramas de clases, arquitectura en capas, flujo JWT |
+| SDD - Propuesta | `docs/sdd/01-propuesta.md` | Propuesta del proyecto |
+| SDD - Especificación | `docs/sdd/02-especificacion.md` | Especificación detallada |
+| SDD - Diseño | `docs/sdd/03-diseno.md` | Diseño del sistema |
+| SDD - Tareas | `docs/sdd/04-tareas.md` | Desglose de tareas |
+| Manual MCP+n8n | `MCP-n8n-Manual.md` | Guía completa de configuración MCP y n8n |
+| Skill del Agente | `skills/operacion-logitrack/SKILL.md` | Definición del skill para el agente IA |
+| Evidencia MCP | `mcp-server/evidencia-herramientas.md` | Tabla de evidencia de las herramientas MCP |
 
 ---
 
-## 🧪 Pruebas
+## Solución de Problemas
+
+### El backend no inicia
 
 ```bash
-# Ejecutar todas las pruebas
-./mvnw test
+# Ver logs
+docker-compose logs backend
 
-# Ejecutar pruebas específicas
-./mvnw test -Dtest=LogitrackApplicationTests
+# Rebuild completo
+docker-compose down
+docker-compose up -d --build
 ```
-
----
-
-## 📄 Scripts SQL
-
-### schema.sql
-Define la estructura completa de la base de datos con todas las tablas, relaciones y restricciones.
-
-### data.sql
-Contiene datos de prueba iniciales:
-- 3 usuarios (1 ADMIN + 2 EMPLEADOS)
-- 3 bodegas
-- 5 productos
-- 2 movimientos de ejemplo
-- 2 registros de auditoría
-- Distribución inicial de stock por bodega
-
----
-
-## 🛠️ Solución de Problemas
-
-### Error: "No autorizado" al consumir endpoints
-Asegúrate de incluir el header `Authorization: Bearer <token>` en todas las peticiones.
 
 ### Error de conexión a la base de datos
-Verifica que PostgreSQL esté corriendo y que las credenciales en `application.properties` sean correctas.
 
-### Puerto 8080 en uso
-Cambia el puerto en `application.properties`:
-```properties
-server.port=9090
+La aplicación usa Supabase (PostgreSQL remoto). Verificar:
+1. Conexión a internet
+2. Las credenciales en `application.properties` son válidas
+3. El esquema `proyecto` existe en la base de datos
+
+### El frontend no muestra datos
+
+1. Verificar que el backend esté corriendo: `curl http://localhost:8080/api/productos`
+2. Verificar el token JWT en la consola del navegador
+3. Verificar los logs del backend para errores 401/403
+
+### n8n no ejecuta el workflow
+
+1. Acceder a http://localhost:5678
+2. Verificar que el workflow esté activo (toggle activado)
+3. Verificar que el MCP server esté corriendo: `curl http://localhost:8081/health`
+4. Revisar logs de n8n: `docker-compose logs n8n`
+
+### MCP server error 500
+
+```bash
+# Ver logs del MCP
+docker-compose logs mcp
+
+# Verificar que el backend esté accesible desde el MCP
+docker-compose exec mcp curl http://backend:8080/api/kpis
 ```
 
 ---
 
-## 📦 Estructura de Paquetes Detallada
+## Tecnologías y Versiones
 
-```
-com.logitrack
-├── config/
-│   ├── OpenApiConfig.java        → Configuración Swagger/OpenAPI con JWT
-│   ├── SpringContext.java        → Acceso a ApplicationContext desde clases no-Spring
-│   ├── UserContext.java          → ThreadLocal para usuario autenticado
-│   └── WebConfig.java            → Configuración CORS y MVC
-├── controller/
-│   ├── AuditoriaController.java  → Endpoints de auditoría (solo ADMIN)
-│   ├── AuthController.java       → Login, registro, registro de empleados
-│   ├── BodegaController.java     → CRUD de bodegas
-│   ├── MovimientoInventarioController.java → Movimientos de inventario
-│   ├── ProductoController.java   → CRUD de productos con inventario
-│   ├── ReporteController.java    → Reportes y resúmenes
-│   └── UsuarioController.java    → Listado de usuarios
-├── dto/
-│   ├── AuthResponse.java         → Respuesta de autenticación
-│   ├── LoginRequest.java         → Solicitud de login
-│   ├── ProductoConInventarioDTO.java → Producto con stock por bodega
-│   ├── ProductoMovidoDTO.java    → Producto más movido
-│   ├── RegisterEmpleadoRequest.java → Registro de empleado
-│   ├── RegisterRequest.java      → Registro de usuario
-│   ├── ResumenReporteDTO.java    → Resumen general del sistema
-│   └── StockPorBodegaDTO.java    → Stock total por bodega
-├── exception/
-│   ├── BadRequestException.java  → Excepción 400
-│   ├── GlobalExceptionHandler.java → Manejador global de errores
-│   └── ResourceNotFoundException.java → Excepción 404
-├── listener/
-│   ├── AuditEntityListener.java  → Listener JPA para auditoría automática
-│   ├── AuditoriaEvent.java       → Evento de auditoría
-│   └── AuditoriaEventListener.java → Manejador de eventos de auditoría
-├── model/
-│   ├── Auditoria.java            → Entidad de auditoría
-│   ├── Bodega.java               → Entidad bodega
-│   ├── InventarioBodega.java     → Stock por bodega
-│   ├── MovimientoDetalle.java    → Detalle de movimiento
-│   ├── MovimientoInventario.java → Entidad movimiento
-│   ├── Producto.java             → Entidad producto
-│   ├── Rol.java                  → Enum: ADMIN, EMPLEADO
-│   ├── TipoMovimiento.java       → Enum: ENTRADA, SALIDA, TRANSFERENCIA
-│   ├── TipoOperacion.java        → Enum: INSERT, UPDATE, DELETE
-│   └── Usuario.java              → Entidad usuario
-├── repository/
-│   ├── AuditoriaRepository.java
-│   ├── BodegaRepository.java
-│   ├── InventarioBodegaRepository.java
-│   ├── MovimientoInventarioRepository.java
-│   ├── ProductoRepository.java
-│   └── UsuarioRepository.java
-├── security/
-│   ├── JwtAuthenticationFilter.java → Filtro JWT
-│   ├── JwtTokenProvider.java     → Generación/validación de tokens
-│   └── SecurityConfig.java       → Configuración de seguridad
-└── service/
-    ├── AuditoriaService.java     → Interfaz
-    ├── AuditoriaServiceImpl.java → Implementación
-    ├── BodegaService.java        → Interfaz
-    ├── BodegaServiceImpl.java    → Implementación
-    ├── MovimientoInventarioService.java → Interfaz
-    ├── MovimientoInventarioServiceImpl.java → Implementación
-    ├── ProductoService.java      → Interfaz
-    ├── ProductoServiceImpl.java  → Implementación
-    ├── ReporteService.java       → Interfaz
-    └── ReporteServiceImpl.java   → Implementación
-```
+| Componente | Versión |
+|-----------|---------|
+| Java | 17 |
+| Spring Boot | 3.2.4 |
+| Spring Data JPA | 3.2.4 |
+| Spring Security | 6.2.1 |
+| Hibernate | 6.4.0 |
+| PostgreSQL Driver | 42.7.1 |
+|jjwt (JWT) | 0.12.3 |
+| SpringDoc OpenAPI | 2.3.0 |
+| Python | 3.11 |
+| FastAPI | 0.109.0 |
+| Uvicorn | 0.27.0 |
+| n8n | latest |
+| Docker | Multi-stage build |
+| Maven | Wrapper (mvnw) |
 
 ---
 
-## 👥 Autores
+## Licencia
 
-- **David Orozco** - *Desarrollador de Software*
-- **Felipe Corzo** - *Desarrollador de Software
+Proyecto académico — Universidad Distrital Francisco José de Caldas
 
 ---
 
+*Desarrollado por David Orozco — LogiTrack IQ 2025*
