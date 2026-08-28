@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/Bogota
+      - TZ=America/Bogota
+    restart: unless-stopped
+    networks:
+      - logitrack-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logitrack-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-us-west-2.pooler.supabase.com:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres.jgdkvfffzdxbzrdvsggo
+      - SPRING_DATASOURCE_PASSWORD=David_Dyonix15
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=proyecto
+      - SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL=true
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - n8n
+    networks:
+      - logitrack-network
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: logitrack-mcp
+    ports:
+      - "8081:8081"
+    environment:
+      - MCP_API_BASE_URL=http://backend:8080/api
+      - MCP_AGENTE_USERNAME=agente_user
+      - MCP_AGENTE_PASSWORD=admin123
+    depends_on:
+      - backend
+    networks:
+      - logitrack-network
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+
+networks:
+  logitrack-network:
+    driver: bridge
