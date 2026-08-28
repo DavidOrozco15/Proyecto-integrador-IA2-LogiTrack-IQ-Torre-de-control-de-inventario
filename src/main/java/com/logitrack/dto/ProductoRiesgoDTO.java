@@ -19,4 +19,7 @@ public class ProductoRiesgoDTO {
     private Double diasCobertura;
     private String estado;
     private String proveedor;
+    private Long proveedorId;
+    private Long bodegaDestinoId;
+    private BigDecimal precioUnitario;
 }

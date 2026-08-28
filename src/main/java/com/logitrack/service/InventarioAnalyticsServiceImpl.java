@@ -70,6 +70,23 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
             double diasCobertura = stockTotal / consumoDiario;
 
             if (stockTotal < puntoReorden) {
+                // Encontrar bodega con menor stock para este producto (bodega sugerida)
+                Long bodegaDestinoId = null;
+                var inventarios = inventarioBodegaRepository.findByProductoId(producto.getId());
+                if (!inventarios.isEmpty()) {
+                    var bodegaMenorStock = inventarios.stream()
+                            .min(java.util.Comparator.comparing(inv -> inv.getStock() != null ? inv.getStock() : Integer.MAX_VALUE))
+                            .orElse(null);
+                    if (bodegaMenorStock != null) {
+                        bodegaDestinoId = bodegaMenorStock.getBodega().getId();
+                    }
+                }
+
+                var proveedorId = producto.getProveedorPrincipal() != null
+                        ? producto.getProveedorPrincipal().getId() : null;
+
+                java.math.BigDecimal precioUnitario = producto.getPrecio();
+
                 enRiesgo.add(ProductoRiesgoDTO.builder()
                         .productoId(producto.getId())
                         .nombre(producto.getNombre())
@@ -81,6 +98,9 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
                         .estado("EN_RIESGO")
                         .proveedor(producto.getProveedorPrincipal() != null
                                 ? producto.getProveedorPrincipal().getNombre() : null)
+                        .proveedorId(proveedorId)
+                        .bodegaDestinoId(bodegaDestinoId)
+                        .precioUnitario(precioUnitario)
                         .build());
             }
         }

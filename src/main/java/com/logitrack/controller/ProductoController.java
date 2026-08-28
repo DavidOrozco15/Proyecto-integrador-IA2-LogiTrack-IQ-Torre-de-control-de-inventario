@@ -1,6 +1,7 @@
 package com.logitrack.controller;
 
 import com.logitrack.dto.ProductoConInventarioDTO;
+import com.logitrack.model.Bodega;
 import com.logitrack.model.Producto;
 import com.logitrack.model.Proveedor;
 import com.logitrack.repository.ProveedorRepository;
@@ -105,6 +106,11 @@ public class ProductoController {
 @GetMapping("/proveedores")
     public ResponseEntity<List<Proveedor>> obtenerProveedores() {
         return ResponseEntity.ok(proveedorRepository.findAll());
+    }
+
+    @GetMapping("/{id}/bodega-sugerida")
+    public ResponseEntity<Bodega> obtenerBodegaSugerida(@PathVariable Long id) {
+        return ResponseEntity.ok(productoService.obtenerBodegaSugerida(id));
     }
 }
 

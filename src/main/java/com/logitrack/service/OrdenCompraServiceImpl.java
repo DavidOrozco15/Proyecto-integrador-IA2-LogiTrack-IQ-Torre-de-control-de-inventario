@@ -45,6 +45,20 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         }
         // Calcular total en el servidor
         orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
+        
+        // Hidratar relaciones para que se serialicen correctamente en la respuesta
+        if (orden.getProducto() != null && orden.getProducto().getId() != null) {
+            orden.setProducto(productoRepository.findById(orden.getProducto().getId()).orElseThrow());
+        }
+        if (orden.getProveedor() != null && orden.getProveedor().getId() != null) {
+            orden.setProveedor(proveedorRepository.findById(orden.getProveedor().getId()).orElseThrow());
+        }
+        if (orden.getBodegaDestino() != null && orden.getBodegaDestino().getId() != null) {
+            orden.setBodegaDestino(bodegaRepository.findById(orden.getBodegaDestino().getId()).orElseThrow());
+        }
+
+        // Calcular total en el servidor
+        orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
         String username = UserContext.getUsername();
         return ordenCompraRepository.save(orden);
     }

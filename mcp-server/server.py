@@ -140,6 +140,38 @@ def consultar_productos_en_riesgo():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al consultar productos en riesgo: {str(e)}")
 
+# Tool 3b: consultar_proveedores
+@app.get("/tools/consultar_proveedores")
+def consultar_proveedores():
+    """Consultar todos los proveedores"""
+    try:
+        url = f"{API_BASE_URL}/proveedores"
+        headers = get_auth_headers()
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        raise HTTPException(status_code=response.status_code, detail=f"Error al consultar proveedores: {response.text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al consultar proveedores: {str(e)}")
+
+# Tool 3c: consultar_bodega_sugerida
+@app.get("/tools/consultar_bodega_sugerida/{productoId}")
+def consultar_bodega_sugerida(productoId: int):
+    """Consultar bodega sugerida para un producto (la que tiene menor stock)"""
+    try:
+        url = f"{API_BASE_URL}/productos/{productoId}/bodega-sugerida"
+        headers = get_auth_headers()
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        raise HTTPException(status_code=response.status_code, detail=f"Error al consultar bodega sugerida: {response.text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al consultar bodega sugerida: {str(e)}")
+
 # Tool 4: consultar_kpis
 @app.get("/tools/consultar_kpis")
 def consultar_kpis():
@@ -204,6 +236,22 @@ def publicar_resumen(resumen: ResumenRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al publicar resumen: {str(e)}")
+
+# Tool 7: consultar_ordenes_borrador
+@app.get("/tools/consultar_ordenes_borrador")
+def consultar_ordenes_borrador():
+    """Consultar órdenes en estado BORRADOR"""
+    try:
+        url = f"{API_BASE_URL}/ordenes?estado=BORRADOR"
+        headers = get_auth_headers()
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code == 200:
+            return response.json()
+        raise HTTPException(status_code=response.status_code, detail=f"Error: {response.text}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # Health check
 @app.get("/health")

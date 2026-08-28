@@ -18,6 +18,7 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Bogota
       - TZ=America/Bogota
+      - GEMINI_API_KEY=AQ.Ab8RN6LL8DEbX84_phO1IKd9D5c6thlGGWiHDKOcBSbk5pumEg
     restart: unless-stopped
     networks:
       - logitrack-network

@@ -288,6 +288,26 @@ public class ProductoServiceImpl implements ProductoService {
         return result;
     }
 
+    @Override
+    public Bodega obtenerBodegaSugerida(Long productoId) {
+        // Obtener inventarios del producto
+        List<InventarioBodega> inventarios = inventarioBodegaRepository.findByProductoId(productoId);
+        if (inventarios.isEmpty()) {
+            return null;
+        }
+        
+        // Encontrar la bodega con menor stock
+        var bodegaMenorStock = inventarios.stream()
+                .min(java.util.Comparator.comparing(inv -> inv.getStock() != null ? inv.getStock() : Integer.MAX_VALUE))
+                .orElse(null);
+        
+        if (bodegaMenorStock != null) {
+            return bodegaMenorStock.getBodega();
+        }
+        
+        return null;
+    }
+
     private void guardarAuditoria(TipoOperacion tipo, Producto producto, String valoresAnteriores, String valoresNuevos) {
         try {
             String username = UserContext.getUsername();
