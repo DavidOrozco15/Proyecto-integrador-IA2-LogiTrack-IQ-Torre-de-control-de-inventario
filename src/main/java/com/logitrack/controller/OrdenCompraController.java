@@ -13,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/ordenes")
@@ -25,6 +27,19 @@ public class OrdenCompraController {
     public OrdenCompraController(OrdenCompraService ordenCompraService, PdfOrdenService pdfOrdenService) {
         this.ordenCompraService = ordenCompraService;
         this.pdfOrdenService = pdfOrdenService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OrdenCompra>> obtenerTodas(@RequestParam(required = false) EstadoOrdenCompra estado) {
+        if (estado != null) {
+            return ResponseEntity.ok(ordenCompraService.obtenerPorEstado(estado));
+        }
+        return ResponseEntity.ok(ordenCompraService.obtenerTodas());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrdenCompra> obtenerPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ordenCompraService.obtenerPorId(id));
     }
 
     @PostMapping

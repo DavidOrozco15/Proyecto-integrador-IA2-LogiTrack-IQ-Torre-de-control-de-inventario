@@ -54,6 +54,12 @@ public class OrdenCompra {
     @Column(name = "pdf_bytes", columnDefinition = "bytea")
     private byte[] pdfBytes;
 
+    @Column(name = "pdf_fecha_generacion")
+    private LocalDateTime pdfFechaGeneracion;
+
+    @Column(name = "creado_por", length = 50)
+    private String creadoPor;
+
     @Column(nullable = false)
     private LocalDateTime fechaCreacion;
 

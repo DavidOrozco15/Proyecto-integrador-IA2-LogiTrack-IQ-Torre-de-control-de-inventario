@@ -1,10 +1,16 @@
 package com.logitrack.service;
 
 import com.logitrack.dto.ProductoRiesgoDTO;
+import com.logitrack.model.EstadoOrdenCompra;
+import com.logitrack.model.MovimientoInventario;
 import com.logitrack.model.Producto;
 import com.logitrack.model.Proveedor;
+import com.logitrack.model.TipoMovimiento;
+import com.logitrack.repository.BodegaRepository;
 import com.logitrack.repository.InventarioBodegaRepository;
 import com.logitrack.repository.MovimientoDetalleRepository;
+import com.logitrack.repository.MovimientoInventarioRepository;
+import com.logitrack.repository.OrdenCompraRepository;
 import com.logitrack.repository.ProductoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,11 +58,15 @@ class InventarioAnalyticsServiceTest {
     @Mock
     private MovimientoDetalleRepository movimientoDetalleRepository;
 
-    // Nota: InventarioAnalyticsServiceImpl probablemente tendrá también
-    // BodegaRepository, MovimientoInventarioRepository y OrdenCompraRepository
-    // como dependencias (para calcularKpis()). @InjectMocks resuelve con null
-    // los parámetros del constructor que no estén anotados con @Mock aquí; eso
-    // no afecta a este test porque obtenerProductosEnRiesgo() no los usa.
+    @Mock
+    private MovimientoInventarioRepository movimientoInventarioRepository;
+
+    @Mock
+    private OrdenCompraRepository ordenCompraRepository;
+
+    @Mock
+    private BodegaRepository bodegaRepository;
+
     @InjectMocks
     private InventarioAnalyticsServiceImpl inventarioAnalyticsService;
 

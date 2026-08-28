@@ -16,8 +16,9 @@ public class PanelResumenController {
     private PanelResumenService panelResumenService;
 
     @PostMapping("/resumen")
-    public void publicarResumen(@RequestBody ResumenPanelRequest request) throws BadRequestException {
+    public ResumenPanel publicarResumen(@RequestBody ResumenPanelRequest request) throws BadRequestException {
         panelResumenService.publicar(request);
+        return panelResumenService.obtenerUltimoResumen().orElse(null);
     }
 
     @GetMapping("/resumen")

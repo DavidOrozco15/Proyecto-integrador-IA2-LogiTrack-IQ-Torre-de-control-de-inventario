@@ -2,6 +2,7 @@ package com.logitrack.service;
 
 import com.logitrack.config.UserContext;
 import com.logitrack.exception.BadRequestException;
+import com.logitrack.exception.ResourceNotFoundException;
 import com.logitrack.model.EstadoOrdenCompra;
 import com.logitrack.model.MovimientoDetalle;
 import com.logitrack.model.MovimientoInventario;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +40,24 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         if (orden.getCantidad() <= 0) {
             throw new BadRequestException("La cantidad debe ser mayor a 0");
         }
-        String username = UserContext.getUsername();
+        if (orden.getPrecioUnitario() == null || orden.getPrecioUnitario().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("El precio unitario debe ser mayor a 0");
+        }
+        
+        // Hidratar relaciones para que se serialicen correctamente en la respuesta
+        if (orden.getProducto() != null && orden.getProducto().getId() != null) {
+            orden.setProducto(productoRepository.findById(orden.getProducto().getId()).orElseThrow());
+        }
+        if (orden.getProveedor() != null && orden.getProveedor().getId() != null) {
+            orden.setProveedor(proveedorRepository.findById(orden.getProveedor().getId()).orElseThrow());
+        }
+        if (orden.getBodegaDestino() != null && orden.getBodegaDestino().getId() != null) {
+            orden.setBodegaDestino(bodegaRepository.findById(orden.getBodegaDestino().getId()).orElseThrow());
+        }
+
+        // Calcular total en el servidor
+        orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
+        orden.setCreadoPor(UserContext.getUsername());
         return ordenCompraRepository.save(orden);
     }
 
@@ -49,12 +69,22 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
 
         EstadoOrdenCompra estadoAnterior = orden.getEstado();
 
-        if (estadoAnterior == EstadoOrdenCompra.CANCELADA && nuevoEstado == EstadoOrdenCompra.APROBADA) {
-            throw new BadRequestException("No se puede aprobar una orden cancelada");
+        // Validar transiciones de estado según las reglas del proyecto
+        boolean transicionValida = switch (estadoAnterior) {
+            case BORRADOR -> nuevoEstado == EstadoOrdenCompra.APROBADA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case APROBADA -> nuevoEstado == EstadoOrdenCompra.RECIBIDA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case PENDIENTE -> nuevoEstado == EstadoOrdenCompra.APROBADA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
+            case RECIBIDA, CANCELADA -> false; // Estados terminales
+        };
+
+        if (!transicionValida) {
+            throw new BadRequestException(
+                String.format("Transicion no permitida: %s -> %s", estadoAnterior, nuevoEstado));
         }
 
         orden.setEstado(nuevoEstado);
         orden.setPdfBytes(null);
+        orden.setPdfFechaGeneracion(null);
         orden = ordenCompraRepository.save(orden);
 
         if (estadoAnterior == EstadoOrdenCompra.APROBADA && nuevoEstado == EstadoOrdenCompra.RECIBIDA) {
@@ -74,5 +104,21 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         }
 
         return orden;
+    }
+
+    @Override
+    public List<OrdenCompra> obtenerTodas() {
+        return ordenCompraRepository.findAll();
+    }
+
+    @Override
+    public List<OrdenCompra> obtenerPorEstado(EstadoOrdenCompra estado) {
+        return ordenCompraRepository.findByEstado(estado);
+    }
+
+    @Override
+    public OrdenCompra obtenerPorId(Long id) throws ResourceNotFoundException {
+        return ordenCompraRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("OrdenCompra", "id", id));
     }
 }
