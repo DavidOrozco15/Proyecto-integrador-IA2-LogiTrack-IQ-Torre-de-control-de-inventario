@@ -30,7 +30,7 @@
     },
     {
       "parameters": {
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/consultar_kpis",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_kpis",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/consultar_productos_en_riesgo",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_productos_en_riesgo",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -54,7 +54,7 @@
     },
     {
       "parameters": {
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/consultar_bodegas_criticas",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_bodegas_criticas",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -67,7 +67,7 @@
     },
     {
       "parameters": {
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/consultar_ordenes_borrador",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_ordenes_borrador",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -166,7 +166,7 @@
         "promptType": "define",
         "text": "={{ JSON.stringify($node[\"Merge MCP Data\"].json) }}  ",
         "options": {
-          "systemMessage": "Eres un analista senior de inventario. Genera un resumen ejecutivo diario en JSON válido con: fecha, narrativa (200-500 chars), alertas[], accionesSugeridas[]. Usa SOLO los datos proporcionados. No inventes datos. JSON válido sin markdown. Reglas: narrativa 200-500 chars, ejecutivo, accionable. alertas: solo riesgo real, severidad ALTA/MEDIA/BAJA, cada alerta con severidad, titulo, detalle, productoId, ordenId (o null), bodegaId (o null). accionesSugeridas: accionables, el campo tipo DEBE ser EXACTAMENTE uno de estos 3 valores (enum fijo del backend, no inventar otros): SOLICITAR_REABASTECIMIENTO (para un producto en riesgo de agotamiento; usar productoId), REVISAR_ORDEN (para una orden en borrador que debe aprobarse o cancelarse; usar ordenId), AJUSTAR_INVENTARIO (para una bodega crítica que necesita redistribución de stock; usar bodegaId). Cada acción con tipo, descripcion, ordenId/productoId/bodegaId (solo uno no null). JSON válido sin markdown."
+          "systemMessage": "Eres un analista senior de inventario. Genera un resumen ejecutivo diario en JSON válido con EXACTAMENTE estas 4 propiedades y ninguna más: fecha, narrativa, alertas, accionesSugeridas. No agregues propiedades adicionales bajo ninguna circunstancia. Usa SOLO los datos proporcionados, no inventes datos. Responde solo JSON válido, sin markdown, sin texto antes o después. Reglas estrictas: fecha: string formato YYYY-MM-DD (fecha de hoy). narrativa: string de 20 a 500 caracteres, ejecutivo y accionable. alertas: array (puede ir vacío); cada alerta tiene EXACTAMENTE las propiedades severidad (BAJA, MEDIA o ALTA), titulo, detalle, productoId, ordenId, bodegaId; debe tener al menos uno de productoId/ordenId/bodegaId con valor no nulo (los que no apliquen van en null); solo riesgo real basado en los datos. accionesSugeridas: array (puede ir vacío); cada acción tiene EXACTAMENTE las propiedades tipo, descripcion, ordenId, productoId, bodegaId; tipo debe ser EXACTAMENTE uno de: REVISAR_ORDEN (usar ordenId, productoId y bodegaId en null), REVISAR_PRODUCTO (usar productoId, ordenId y bodegaId en null), REVISAR_BODEGA (usar bodegaId, productoId y ordenId en null); cada acción debe tener EXACTAMENTE un ID no nulo, nunca cero ni más de uno."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -247,7 +247,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/crear_orden_borrador",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/crear_orden_borrador",
         "sendHeaders": true,
         "specifyHeaders": "json",
         "jsonHeaders": "{\"Content-Type\": \"application/json\"}",
@@ -275,13 +275,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/publicar_resumen",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/publicar_resumen",
         "sendHeaders": true,
         "specifyHeaders": "json",
         "jsonHeaders": "{\"Content-Type\": \"application/json\"}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ fecha: $('Parse AI Output').item.json.fecha, narrativa: $('Parse AI Output').item.json.narrativa, alertas: $('Parse AI Output').item.json.alertas, accionesSugeridas: $('Parse AI Output').item.json.accionesSugeridas, ordenesCreadas: $json.ordenesCreadas }) }}",
+        "jsonBody": "={{ JSON.stringify({ fecha: $('Parse AI Output').first().json.fecha, narrativa: $('Parse AI Output').first().json.narrativa, alertas: $('Parse AI Output').first().json.alertas, accionesSugeridas: $('Parse AI Output').first().json.accionesSugeridas }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -293,7 +293,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$node[\"Config MCP\"].json.mcp_base_url}}/tools/publicar_resumen",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/publicar_resumen",
         "sendHeaders": true,
         "specifyHeaders": "json",
         "jsonHeaders": "{\"Content-Type\": \"application/json\"}",

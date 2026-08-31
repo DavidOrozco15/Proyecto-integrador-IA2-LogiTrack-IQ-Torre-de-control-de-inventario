@@ -18,4 +18,7 @@ public interface OrdenCompraRepository extends JpaRepository<OrdenCompra, Long> 
 
     @Query("SELECT COUNT(o) FROM OrdenCompra o WHERE o.estado = :estado")
     Long countByEstado(@Param("estado") EstadoOrdenCompra estado);
+
+    @Query("SELECT COUNT(o) FROM OrdenCompra o WHERE o.producto.id = :productoId AND o.estado IN :estados")
+    Long countByProductoIdAndEstados(@Param("productoId") Long productoId, @Param("estados") List<EstadoOrdenCompra> estados);
 }

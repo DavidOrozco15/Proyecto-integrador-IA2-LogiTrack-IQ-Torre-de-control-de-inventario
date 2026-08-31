@@ -184,6 +184,16 @@ async function fetchOrdenes(estado) {
 async function fetchResumen() {
     try {
         const d = await apiRequest(ENDPOINTS.resumen);
+        if (d && d.contenidoJson) {
+            try {
+                const contenido = JSON.parse(d.contenidoJson);
+                d.alertas = contenido.alertas || [];
+                d.accionesSugeridas = contenido.accionesSugeridas || [];
+            } catch (e) {
+                d.alertas = [];
+                d.accionesSugeridas = [];
+            }
+        }
         state.data.resumen = d;
         return d;
     } catch (e) {
@@ -410,10 +420,10 @@ function renderResumen() {
 
     if (fEl) { fEl.textContent = formatDateOnly(r.fecha); fEl.className = 'badge badge-info'; }
 
-    let alertasHtml = '';
+    let alertasHtml = '<div class="empty-section"><p>No hay alertas para este resumen</p></div>';
     if (r.alertas?.length) {
-        alertasHtml = `<div class="resumen-section"><h4>Alertas</h4><div class="alertas-list">${r.alertas.map(a => `
-            <div class="alerta-item">
+        alertasHtml = `<div class="alertas-list">${r.alertas.map(a => `
+            <div class="alerta-item" data-severity="${a.severidad}">
                 <div class="alerta-header"><span class="badge ${getSeverityClass(a.severidad)}">${a.severidad}</span><strong>${a.titulo}</strong></div>
                 <p class="alerta-detalle">${a.detalle}</p>
                 <div class="alerta-refs">
@@ -421,25 +431,45 @@ function renderResumen() {
                     ${a.ordenId ? `<span class="ref">Orden: #${a.ordenId}</span>` : ''}
                     ${a.bodegaId ? `<span class="ref">Bodega: #${a.bodegaId}</span>` : ''}
                 </div>
-            </div>`).join('')}</div></div>`;
+            </div>`).join('')}</div>`;
     }
 
-    let accionesHtml = '';
+    let accionesHtml = '<div class="empty-section"><p>No hay acciones sugeridas para este resumen</p></div>';
     if (r.accionesSugeridas?.length) {
-        accionesHtml = `<div class="resumen-section"><h4>Acciones Sugeridas</h4><div class="acciones-list">${r.accionesSugeridas.map(a => `
-            <div class="accion-item">
+        accionesHtml = `<div class="acciones-list">${r.accionesSugeridas.map(a => `
+            <div class="accion-item" data-tipo="${a.tipo}">
                 <span class="badge ${getAccionClass(a.tipo)}">${a.tipo}</span>
                 <span>${a.descripcion}</span>
                 ${a.ordenId ? `<span class="ref">Orden: #${a.ordenId}</span>` : ''}
                 ${a.productoId ? `<span class="ref">Producto: #${a.productoId}</span>` : ''}
                 ${a.bodegaId ? `<span class="ref">Bodega: #${a.bodegaId}</span>` : ''}
-            </div>`).join('')}</div></div>`;
+            </div>`).join('')}</div>`;
     }
 
     c.innerHTML = `
-        <div class="resumen-card">
-            <div class="resumen-narrativa"><h4>Narrativa</h4><p>${r.narrativa}</p></div>
-            ${alertasHtml}${accionesHtml}
+        <div class="resumen-panel">
+            <div class="resumen-ejecutivo-card">
+                <span class="resumen-ejecutivo-label">Resumen Ejecutivo</span>
+                <p>${r.narrativa}</p>
+            </div>
+            <div class="resumen-grid">
+                <div class="resumen-col">
+                    <div class="resumen-col-header resumen-col-header-alertas">
+                        <span>&#9888;&#65039; Alertas</span>
+                    </div>
+                    <div class="resumen-col-body">
+                        ${alertasHtml}
+                    </div>
+                </div>
+                <div class="resumen-col">
+                    <div class="resumen-col-header resumen-col-header-acciones">
+                        <span>&#9889; Acciones Sugeridas</span>
+                    </div>
+                    <div class="resumen-col-body resumen-col-body-acciones">
+                        ${accionesHtml}
+                    </div>
+                </div>
+            </div>
         </div>`;
 }
 

@@ -81,6 +81,7 @@ Esto levantará 3 contenedores:
 |---------|-----------|-----|
 | `admin` | `admin123` | Administrador |
 | `agente_user` | `admin123` | Agente IA (usado por n8n/MCP) |
+| `empleado1` | `admin123` | Empleado |
 
 ### Verificar el estado
 
@@ -125,14 +126,13 @@ Proyecto_SpringBoot_LogiTrack/
 │       │   └── util/            # Utilidades (fechas Bogotá)
 │       └── resources/
 │           ├── application.properties   # Config Spring Boot
-│           ├── data.sql                 # Datos semilla (30 productos, 5 bodegas)
+│           ├── data.sql                 # Datos semilla (51 productos, 5 bodegas)
 │           ├── schema.sql               # DDL
 │           └── static/                  # Frontend servido por Spring Boot
-│               ├── css/styles.css       # Estilos dark-theme
-│               ├── js/app.js            # Lógica del frontend
-│               ├── dashboard.html       # Dashboard principal
+│               ├── index.html           # Dashboard principal
 │               ├── login.html           # Página de login
-│               └── ...                  # Otras páginas
+│               ├── app.js               # Lógica del frontend
+│               └── styles.css           # Estilos dark-theme
 ├── frontend/                     # Frontend standalone (copia para desarrollo)
 ├── mcp-server/
 │   ├── server.py                 # FastAPI con 9 herramientas MCP
@@ -186,7 +186,7 @@ Proyecto_SpringBoot_LogiTrack/
                      ├──────────────────────┤
                      │ id                   │
                      │ tipo (ENTRADA/SALIDA/│
-                     │       TRASLADO)      │
+                     │       TRANSFERENCIA) │
                      │ bodegaOrigen (FK)    │
                      │ bodegaDestino (FK)   │
                      │ usuario (FK)         │
@@ -209,27 +209,50 @@ Proyecto_SpringBoot_LogiTrack/
 │    OrdenCompra       │     │    ResumenPanel      │
 ├──────────────────────┤     ├──────────────────────┤
 │ id                   │     │ id                   │
-│ estado (BORRADOR/    │     │ titulo               │
-│   PENDIENTE/APROBADA/│     │ contenido            │
+│ estado (BORRADOR/    │     │ fecha                │
+│   PENDIENTE/APROBADA/│     │ narrativa            │
 │   RECIBIDA/CANCELADA)│     │ contenidoJson        │
-│ proveedor (FK)       │     │ tipoResumen          │
-│ usuarioSolicitante   │     │ autor                │
-│ totalEstimado        │     │ creadoEn             │
-│ observaciones        │     │                      │
-│ creadoPor            │     └──────────────────────┘
-│ pdfRuta              │
-│ pdfFechaGeneracion   │     ┌──────────────────────┐
-│ creadoEn             │     │    Auditoria         │
-└──────────┬───────────┘     ├──────────────────────┤
-           │ 1:N             │ id                   │
-┌──────────┴───────────┐     │ usuario (FK)         │
-│ OrdenCompraDetalle   │     │ tipoOperacion        │
-├──────────────────────┤     │ entidad              │
-│ id                   │     │ entidadId            │
-│ orden (FK)           │     │ detalles             │
-│ producto (FK)        │     │ direccionIp          │
-│ cantidad             │     │ creadoEn             │
-│ precioUnitario       │     └──────────────────────┘
+│ proveedor (FK)       │     │ autor                │
+│ usuarioSolicitante   │     │ createdAt            │
+│ totalEstimado        │     └──────────────────────┘
+│ observaciones        │
+│ creadoPor            │     ┌──────────────────────┐
+│ pdfRuta              │     │    Auditoria         │
+│ pdfFechaGeneracion   │     ├──────────────────────┤
+│ creadoEn             │     │ id                   │
+└──────────┬───────────┘     │ usuario (FK)         │
+           │ 1:N             │ tipoOperacion        │
+┌──────────┴───────────┐     │ entidadAfectada      │
+│ OrdenCompraDetalle   │     │ entidadId            │
+├──────────────────────┤     │ valoresNuevos        │
+│ id                   │     │ creadoEn             │
+│ orden (FK)           │     └──────────────────────┘
+│ producto (FK)        │
+│ cantidad             │     ┌──────────────────────┐
+│ precioUnitario       │     │    AlertaPanel       │
+└──────────────────────┘     ├──────────────────────┤
+                             │ id                   │
+┌──────────────────────┐     │ resumen (FK)         │
+│    ResumenPanel      │     │ severidad            │
+├──────────────────────┤     │ titulo               │
+│ id                   │     │ detalle              │
+│ fecha                │     │ productoId           │
+│ narrativa            │     │ ordenId              │
+│ contenidoJson        │     │ bodegaId             │
+│ autor                │     └──────────────────────┘
+│ createdAt            │
+└──────────────────────┘     ┌──────────────────────┐
+                             │ AccionSugeridaPanel  │
+┌──────────────────────┐     ├──────────────────────┤
+│    Auditoria         │     │ id                   │
+├──────────────────────┤     │ resumen (FK)         │
+│ id                   │     │ tipo                 │
+│ usuario (FK)         │     │ descripcion          │
+│ tipoOperacion        │     │ productoId           │
+│ entidadAfectada      │     │ ordenId              │
+│ entidadId            │     │ bodegaId             │
+│ valoresNuevos        │     └──────────────────────┘
+│ creadoEn             │
 └──────────────────────┘
 ```
 
@@ -238,11 +261,11 @@ Proyecto_SpringBoot_LogiTrack/
 | Enum | Valores |
 |------|---------|
 | **Rol** | `ADMIN`, `EMPLEADO`, `AGENTE` |
-| **TipoMovimiento** | `ENTRADA`, `SALIDA`, `TRASLADO` |
-| **TipoOperacion** | `CREACION`, `ACTUALIZACION`, `ELIMINACION`, `LOGIN`, `CONSULTA` |
+| **TipoMovimiento** | `ENTRADA`, `SALIDA`, `TRANSFERENCIA` |
+| **TipoOperacion** | `INSERT`, `UPDATE`, `DELETE` |
 | **EstadoOrdenCompra** | `BORRADOR`, `PENDIENTE`, `APROBADA`, `RECIBIDA`, `CANCELADA` |
-| **SeveridadAlerta** | `BAJA`, `MEDIA`, `ALTA`, `CRITICA` |
-| **TipoAccionSugerida** | `REABASTECER`, `TRASLADAR`, `CANCELAR` |
+| **SeveridadAlerta** | `BAJA`, `MEDIA`, `ALTA` |
+| **TipoAccionSugerida** | `REVISAR_ORDEN`, `REVISAR_PRODUCTO`, `REVISAR_BODEGA` |
 
 ---
 
@@ -272,6 +295,7 @@ curl http://localhost:8080/api/productos \
 | GET | `/api/usuarios` | Listar usuarios | ADMIN |
 | GET | `/api/productos` | Listar productos | Todos |
 | GET | `/api/productos/{id}` | Producto por ID | Todos |
+| GET | `/api/productos/riesgo` | Productos en riesgo de quiebre | Todos |
 | POST | `/api/productos` | Crear producto | ADMIN |
 | PUT | `/api/productos/{id}` | Actualizar producto | ADMIN |
 | GET | `/api/bodegas` | Listar bodegas | Todos |
@@ -290,10 +314,8 @@ curl http://localhost:8080/api/productos \
 | GET | `/api/proveedores` | Listar proveedores | Todos |
 | POST | `/api/proveedores` | Crear proveedor | ADMIN |
 | GET | `/api/kpis` | KPIs del dashboard | Todos |
-| GET | `/api/kpis/riesgos` | Productos en riesgo | Todos |
-| GET | `/api/kpis/bodegas-criticas` | Bodegas con occupancy >=90% | Todos |
-| GET | `/api/panel-resumen` | Resumen del panel | Todos |
-| POST | `/api/panel-resumen` | Publicar resumen | AGENTE, ADMIN |
+| GET | `/api/panel/resumen` | Resumen del panel | Todos |
+| POST | `/api/panel/resumen` | Publicar resumen | AGENTE, ADMIN |
 | GET | `/api/auditoria` | Log de auditoría | ADMIN |
 
 ### Ejemplos con curl
@@ -345,31 +367,35 @@ El sistema se inicializa automáticamente con datos de prueba consistentes:
 
 | Entidad | Cantidad | Detalles |
 |---------|----------|----------|
-| **Productos** | 30 | 6 categorías (Electrónica, Periféricos, Almacenamiento, Redes, Impresión, Audio) |
-| **Bodegas** | 5 | Central (92.1% - CRÍTICA), Norte, Sur, Este, Oeste |
-| **Proveedores** | 6 | TechSupply, Importadora Global, etc. |
+| **Productos** | 51 | 7 categorías (Electrónica, Periféricos, Almacenamiento, Componentes, Redes, Audio, Mobiliario) + extra |
+| **Bodegas** | 5 | Central Bogota (91.1%), Medellín, Norte Cali, Sur Barranquilla, Occidente Pereira |
+| **Proveedores** | 8 | TechParts, Distribuidora Nacional, Importaciones Globales, etc. |
 | **Usuarios** | 3 | admin (ADMIN), agente_user (AGENTE), empleado1 (EMPLEADO) |
-| **Movimientos** | 32 | 7 de ayer, 25 de hoy (varias horas) |
-| **Detalles de movimiento** | 62 | Stock consistente con inventario |
-| **Órdenes de compra** | 1 | En estado BORRADOR |
-| **Inventarios por bodega** | 150 | Stock distribuido en 5 bodegas × 30 productos |
+| **Movimientos** | 47 | Distribuidos en 30 días (AYER: 7, anteriores: 40) |
+| **Detalles de movimiento** | 82 | Stock consistente con inventario |
+| **Órdenes de compra** | 0 | Se crean vía workflow n8n o manualmente |
+| **Inventarios por bodega** | 140 | Stock distribuido en 5 bodegas × 51 productos |
 
 ### Bodegas Críticas
 
-| Bodega | Capacidad | Stock | Ocupación | Estado |
-|--------|-----------|-------|-----------|--------|
-| Bodega Central | 380 | 350 | **92.1%** | CRÍTICA |
-| Bodega Norte | 200 | 74 | 37.0% | Normal |
-| Bodega Sur | 150 | 78 | 52.0% | Normal |
-| Bodega Este | 100 | 38 | 38.0% | Normal |
-| Bodega Oeste | 170 | 74 | 43.5% | Normal |
+| Bodega | Capacidad | Stock Aprox. | Ocupación | Estado |
+|--------|-----------|-------------|-----------|--------|
+| Bodega Central Bogota | 450 | ~410 | **91.1%** | CRÍTICA |
+| Centro Distribución Medellín | 400 | ~310 | 77.5% | Normal |
+| Bodega Norte Cali | 380 | ~285 | 75.0% | Normal |
+| Bodega Sur Barranquilla | 350 | ~280 | 80.0% | Normal |
+| Bodega Occidente Pereira | 420 | ~365 | 86.9% | Alta |
 
 ### Productos en Riesgo (stock <= punto de reorden)
 
 | Producto | SKU | Stock Total | Pto. Reorden | Estado |
 |----------|-----|-------------|--------------|--------|
-| Teclado Keychron K2 | KBD-K2-BT | 2 | 3 | EN RIESGO |
-| Micrófono Blue Yeti | MIC-BLU-YETI | 1 | 3 | EN RIESGO |
+| Mouse Gamer RGB Corsair | - | 3 | 5 | EN RIESGO |
+| Teclado Mini Mecanico Keychron | - | 2 | 3 | EN RIESGO |
+| Tarjeta Grafica RTX 4060 | - | 4 | 6 | EN RIESGO |
+| Microfono Blue Yeti USB | - | 1 | 3 | EN RIESGO |
+
+> **Nota:** Productos con órdenes de compra activas (BORRADOR/PENDIENTE) se excluyen automáticamente del análisis de riesgo.
 
 ---
 
@@ -380,12 +406,7 @@ El sistema se inicializa automáticamente con datos de prueba consistentes:
 | Página | URL | Descripción |
 |--------|-----|-------------|
 | Login | `/login.html` | Inicio de sesión |
-| Dashboard | `/dashboard.html` | Panel principal con KPIs, bodegas, resumen |
-| Órdenes de Compra | `/dashboard.html#ordenes` | Gestión de órdenes con filtros y acciones |
-| Productos en Riesgo | `/dashboard.html#riesgo` | Productos por debajo del punto de reorden |
-| Todos los Productos | `/dashboard.html#todos` | Catálogo completo con filtros |
-| Bodegas | `/dashboard.html#bodegas` | Estado de las 5 bodegas con inventario |
-| Auditoría | `/html/auditoria.html` | Log de actividades (solo ADMIN) |
+| Dashboard | `/` (index.html) | Panel principal con KPIs, bodegas, resumen, productos, órdenes |
 
 ### Funcionalidades del Frontend
 
@@ -573,6 +594,12 @@ docker-compose exec mcp curl http://backend:8080/api/kpis
 | n8n | latest |
 | Docker | Multi-stage build |
 | Maven | Wrapper (mvnw) |
+
+---
+
+## Video de Demostracion
+
+[Ver video en Google Drive](https://drive.google.com/drive/folders/1xorUy-Iv5WMA2NOPU_OB2yVWIXHfy4i2?usp=sharing)
 
 ---
 

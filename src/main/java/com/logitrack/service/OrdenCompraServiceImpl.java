@@ -3,11 +3,14 @@ package com.logitrack.service;
 import com.logitrack.config.UserContext;
 import com.logitrack.exception.BadRequestException;
 import com.logitrack.exception.ResourceNotFoundException;
+import com.logitrack.model.Auditoria;
 import com.logitrack.model.EstadoOrdenCompra;
 import com.logitrack.model.MovimientoDetalle;
 import com.logitrack.model.MovimientoInventario;
 import com.logitrack.model.OrdenCompra;
 import com.logitrack.model.TipoMovimiento;
+import com.logitrack.model.TipoOperacion;
+import com.logitrack.model.Usuario;
 import com.logitrack.repository.AuditoriaRepository;
 import com.logitrack.repository.BodegaRepository;
 import com.logitrack.repository.OrdenCompraRepository;
@@ -20,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +60,23 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
         // Calcular total en el servidor
         orden.setTotal(orden.getPrecioUnitario().multiply(java.math.BigDecimal.valueOf(orden.getCantidad())));
         orden.setCreadoPor(UserContext.getUsername());
-        return ordenCompraRepository.save(orden);
+        OrdenCompra guardada = ordenCompraRepository.save(orden);
+
+        // Registrar auditoria de creacion
+        try {
+            String username = UserContext.getUsername();
+            Usuario usuario = username != null ? usuarioRepository.findByUsername(username).orElse(null) : null;
+            auditoriaRepository.save(Auditoria.builder()
+                    .tipoOperacion(TipoOperacion.INSERT)
+                    .usuario(usuario)
+                    .entidadAfectada("OrdenCompra")
+                    .entidadId(guardada.getId())
+                    .valoresNuevos(guardada.toString())
+                    .build());
+        } catch (Exception ignored) {
+        }
+
+        return guardada;
     }
 
     @Override
@@ -69,7 +87,7 @@ public class OrdenCompraServiceImpl implements OrdenCompraService {
 
         EstadoOrdenCompra estadoAnterior = orden.getEstado();
 
-        // Validar transiciones de estado según las reglas del proyecto
+        // Validar transiciones de estado segun las reglas del proyecto
         boolean transicionValida = switch (estadoAnterior) {
             case BORRADOR -> nuevoEstado == EstadoOrdenCompra.APROBADA || nuevoEstado == EstadoOrdenCompra.CANCELADA;
             case APROBADA -> nuevoEstado == EstadoOrdenCompra.RECIBIDA || nuevoEstado == EstadoOrdenCompra.CANCELADA;

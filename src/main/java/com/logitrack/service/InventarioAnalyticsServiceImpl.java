@@ -53,7 +53,12 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
         var inicio = FechasBogota.inicioUltimos30DiasBogota();
         var fin = FechasBogota.finDeHoyBogota();
 
+        var estadosActivos = List.of(EstadoOrdenCompra.BORRADOR, EstadoOrdenCompra.PENDIENTE);
+
         for (var producto : productos) {
+            Long ordenesActivas = ordenCompraRepository.countByProductoIdAndEstados(producto.getId(), estadosActivos);
+            if (ordenesActivas != null && ordenesActivas > 0) continue;
+
             Integer stockTotal = inventarioBodegaRepository.sumStockByProductoId(producto.getId());
             if (stockTotal == null) stockTotal = 0;
 
@@ -75,7 +80,13 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
                 var inventarios = inventarioBodegaRepository.findByProductoId(producto.getId());
                 if (!inventarios.isEmpty()) {
                     var bodegaMenorStock = inventarios.stream()
-                            .min(java.util.Comparator.comparing(inv -> inv.getStock() != null ? inv.getStock() : Integer.MAX_VALUE))
+                            .min((a, b) -> {
+                                int cmp = Integer.compare(
+                                        a.getStock() != null ? a.getStock() : Integer.MAX_VALUE,
+                                        b.getStock() != null ? b.getStock() : Integer.MAX_VALUE);
+                                if (cmp != 0) return cmp;
+                                return Long.compare(a.getBodega().getId(), b.getBodega().getId());
+                            })
                             .orElse(null);
                     if (bodegaMenorStock != null) {
                         bodegaDestinoId = bodegaMenorStock.getBodega().getId();
@@ -112,7 +123,12 @@ public class InventarioAnalyticsServiceImpl implements InventarioAnalyticsServic
         List<ProductoRiesgoDTO> enQuiebre = new ArrayList<>();
         var productos = productoRepository.findAll();
 
+        var estadosActivos = List.of(EstadoOrdenCompra.BORRADOR, EstadoOrdenCompra.PENDIENTE);
+
         for (var producto : productos) {
+            Long ordenesActivas = ordenCompraRepository.countByProductoIdAndEstados(producto.getId(), estadosActivos);
+            if (ordenesActivas != null && ordenesActivas > 0) continue;
+
             Integer stockTotal = inventarioBodegaRepository.sumStockByProductoId(producto.getId());
             if (stockTotal == null) stockTotal = 0;
 

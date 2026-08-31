@@ -448,6 +448,23 @@ public class PdfOrdenService {
                 cs.newLineAtOffset(pageWidth - margin - 80, 15);
                 cs.showText("Pagina 1 de 1");
                 cs.endText();
+
+                // === WATERMARK: BORRADOR ===
+                if (orden.getEstado() != null && orden.getEstado().toString().equals("BORRADOR")) {
+                    cs.beginText();
+                    cs.setFont(PDType1Font.HELVETICA_BOLD, 72);
+                    cs.setNonStrokingColor(220, 220, 220);
+                    cs.setTextMatrix(
+                        (float)(Math.cos(Math.toRadians(45)) * 1),
+                        (float)(Math.sin(Math.toRadians(45)) * 1),
+                        (float)(-Math.sin(Math.toRadians(45)) * 1),
+                        (float)(Math.cos(Math.toRadians(45)) * 1),
+                        pageWidth / 2 - 160,
+                        pageHeight / 2
+                    );
+                    cs.showText("BORRADOR");
+                    cs.endText();
+                }
             }
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
