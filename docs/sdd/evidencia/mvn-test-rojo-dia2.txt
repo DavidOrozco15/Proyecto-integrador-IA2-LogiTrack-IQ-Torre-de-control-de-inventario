@@ -1,0 +1,171 @@
+Evidencia — mvn test en ROJO (Día 2, antes de implementar)
+Fecha de la corrida: 2026-08-25T16:15:04-05:00
+Comando ejecutado: mvn test
+Resultado: BUILD FAILURE (39 errores de compilación)
+
+Contexto:
+Los tests de docs/sdd (InventarioAnalyticsServiceTest, OrdenCompraServiceTest,
+PanelResumenServiceTest, OrdenCompraEstadoSecurityTest, OrdenCompraPdfIntegrationTest,
+PanelResumenIntegrationTest) referencian clases de producción que todavía no existen
+en el proyecto (OrdenCompra, EstadoOrdenCompra, Proveedor, ResumenPanel,
+SeveridadAlerta, TipoAccionSugerida, ProductoRiesgoDTO, AlertaDTO, AccionSugeridaDTO,
+ResumenPanelRequest, OrdenCompraRepository, ProveedorRepository,
+ResumenPanelRepository, MovimientoDetalleRepository, InventarioAnalyticsServiceImpl,
+OrdenCompraServiceImpl, PanelResumenServiceImpl). Esto es intencional: los tests se
+escribieron ANTES de implementar las reglas (TDD), por lo que el proyecto no compila
+todavía. Este es el estado "rojo" exigido antes del commit
+"test: define reorder and order-state rules".
+
+De los 39 errores:
+- 33 corresponden a clases de producción faltantes (esperado, ver lista arriba).
+- 6 corresponden a un problema de resolución de dependencias en el classpath de
+  test (paquete org.springframework.boot.test.autoconfigure.web.servlet /
+  clase AutoConfigureMockMvc), pendiente de corregir con "mvn clean test -U" o
+  limpiando la caché local de Maven para spring-boot-test-autoconfigure. No afecta
+  la validez de esta evidencia como "rojo" (el build igual falla como se espera),
+  pero se corrige antes de continuar con la implementación para no arrastrar
+  ruido ajeno a las reglas de negocio.
+
+=== Salida completa de la consola ===
+
+Dyonix@hplaptop:~/Documentos/Proyecto_SpringBoot_LogiTrack$ mvn test
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.campus:logitrak >-------------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ logitrak ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 16 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ logitrak ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ logitrak ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ logitrak ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraEstadoSecurityTest.java:[6,63] package org.springframework.boot.test.autoconfigure.web.servlet does not exist
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraEstadoSecurityTest.java:[36,2] cannot find symbol
+  symbol: class AutoConfigureMockMvc
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[4,27] cannot find symbol
+  symbol:   class EstadoOrdenCompra
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[5,27] cannot find symbol
+  symbol:   class OrdenCompra
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[7,27] cannot find symbol
+  symbol:   class Proveedor
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[9,32] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[11,32] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[17,63] package org.springframework.boot.test.autoconfigure.web.servlet does not exist
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[47,2] cannot find symbol
+  symbol: class AutoConfigureMockMvc
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[52,24] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: class com.logitrack.controller.OrdenCompraPdfIntegrationTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/OrdenCompraPdfIntegrationTest.java:[55,24] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: class com.logitrack.controller.OrdenCompraPdfIntegrationTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/PanelResumenIntegrationTest.java:[6,63] package org.springframework.boot.test.autoconfigure.web.servlet does not exist
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/controller/PanelResumenIntegrationTest.java:[32,2] cannot find symbol
+  symbol: class AutoConfigureMockMvc
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/InventarioAnalyticsServiceTest.java:[3,25] cannot find symbol
+  symbol:   class ProductoRiesgoDTO
+  location: package com.logitrack.dto
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/InventarioAnalyticsServiceTest.java:[5,27] cannot find symbol
+  symbol:   class Proveedor
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/InventarioAnalyticsServiceTest.java:[7,32] cannot find symbol
+  symbol:   class MovimientoDetalleRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/InventarioAnalyticsServiceTest.java:[53,13] cannot find symbol
+  symbol:   class MovimientoDetalleRepository
+  location: class com.logitrack.service.InventarioAnalyticsServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/InventarioAnalyticsServiceTest.java:[61,13] cannot find symbol
+  symbol:   class InventarioAnalyticsServiceImpl
+  location: class com.logitrack.service.InventarioAnalyticsServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[6,27] cannot find symbol
+  symbol:   class EstadoOrdenCompra
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[8,27] cannot find symbol
+  symbol:   class OrdenCompra
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[10,27] cannot find symbol
+  symbol:   class Proveedor
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[14,32] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[16,32] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[50,19] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: class com.logitrack.service.OrdenCompraServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[52,19] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: class com.logitrack.service.OrdenCompraServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[59,13] cannot find symbol
+  symbol:   class OrdenCompraServiceImpl
+  location: class com.logitrack.service.OrdenCompraServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/OrdenCompraServiceTest.java:[144,13] cannot find symbol
+  symbol:   class OrdenCompra
+  location: class com.logitrack.service.OrdenCompraServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[3,25] cannot find symbol
+  symbol:   class AccionSugeridaDTO
+  location: package com.logitrack.dto
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[4,25] cannot find symbol
+  symbol:   class AlertaDTO
+  location: package com.logitrack.dto
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[5,25] cannot find symbol
+  symbol:   class ResumenPanelRequest
+  location: package com.logitrack.dto
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[7,27] cannot find symbol
+  symbol:   class SeveridadAlerta
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[8,27] cannot find symbol
+  symbol:   class TipoAccionSugerida
+  location: package com.logitrack.model
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[11,32] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[13,32] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[14,32] cannot find symbol
+  symbol:   class ResumenPanelRepository
+  location: package com.logitrack.repository
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[44,19] cannot find symbol
+  symbol:   class ProveedorRepository
+  location: class com.logitrack.service.PanelResumenServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[47,19] cannot find symbol
+  symbol:   class OrdenCompraRepository
+  location: class com.logitrack.service.PanelResumenServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[48,19] cannot find symbol
+  symbol:   class ResumenPanelRepository
+  location: class com.logitrack.service.PanelResumenServiceTest
+[ERROR] /home/Dyonix/Documentos/Proyecto_SpringBoot_LogiTrack/src/test/java/com/logitrack/service/PanelResumenServiceTest.java:[53,13] cannot find symbol
+  symbol:   class PanelResumenServiceImpl
+  location: class com.logitrack.service.PanelResumenServiceTest
+[INFO] 39 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  18.041 s
+[INFO] Finished at: 2026-08-25T16:15:04-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.15.0:testCompile (default-testCompile) on project logitrak: Compilation failure

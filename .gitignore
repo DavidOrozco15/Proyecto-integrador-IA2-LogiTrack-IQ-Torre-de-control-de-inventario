@@ -31,3 +31,21 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Debug artifacts ###
+cp.txt
+promopt.txt
+mvn-test-verde-dia3.txt
+
+### Video/Recording ###
+guion-video.md
+*.mp4
+*.mkv
+*.avi
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Docker ###
+.env

@@ -46,7 +46,8 @@ public class SecurityConfig {
     @Bean
     public DaoAuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
         return authProvider;
     }
@@ -76,14 +77,31 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/register-empleado").hasRole("ADMIN")
                 // Módulo de Auditoría restringido exclusivamente a ADMIN
                 .requestMatchers("/api/auditorias/**").hasRole("ADMIN")
-                // Bodegas: EMPLEADO solo puede VER; CREAR y ELIMINAR solo ADMIN
-                .requestMatchers(HttpMethod.GET, "/api/bodegas/**").hasAnyRole("ADMIN", "EMPLEADO")
+                // Bodegas: EMPLEADO y AGENTE solo pueden VER; CREAR y ELIMINAR solo ADMIN
+                .requestMatchers(HttpMethod.GET, "/api/bodegas/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
                 .requestMatchers(HttpMethod.POST, "/api/bodegas/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/bodegas/**").hasRole("ADMIN")
-                // Productos: EMPLEADO puede VER y CREAR; solo ADMIN puede ELIMINAR
-                .requestMatchers(HttpMethod.GET, "/api/productos/**").hasAnyRole("ADMIN", "EMPLEADO")
-                .requestMatchers(HttpMethod.POST, "/api/productos/**").hasAnyRole("ADMIN", "EMPLEADO")
+                // Productos: EMPLEADO y AGENTE pueden VER y CREAR; solo ADMIN puede ELIMINAR
+                .requestMatchers(HttpMethod.GET, "/api/productos/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+                .requestMatchers(HttpMethod.POST, "/api/productos/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
                 .requestMatchers(HttpMethod.DELETE, "/api/productos/**").hasRole("ADMIN")
+                // Órdenes de compra: AGENTE no puede cambiar estado (solo ADMIN)
+                .requestMatchers(HttpMethod.PATCH, "/api/ordenes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+                .requestMatchers(HttpMethod.POST, "/api/ordenes/**").hasAnyRole("ADMIN", "EMPLEADO", "AGENTE")
+                // KPIs y endpoints de riesgo/stock
+                .requestMatchers(HttpMethod.GET, "/api/kpis").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/productos/riesgo").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/productos/*/stock").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/bodegas/criticas").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/proveedores").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/**").hasAnyRole("ADMIN", "AGENTE", "EMPLEADO")
+                .requestMatchers(HttpMethod.GET, "/api/ordenes/*/pdf").hasAnyRole("ADMIN", "AGENTE")
+                .requestMatchers(HttpMethod.POST, "/api/ordenes/*/pdf").hasAnyRole("ADMIN", "AGENTE")
+                // Panel de resumen
+                .requestMatchers(HttpMethod.POST, "/api/panel/resumen").hasAnyRole("ADMIN", "AGENTE")
+                // Movimientos: solo ADMIN y EMPLEADO (AGENTE excluido explícitamente)
+                .requestMatchers(HttpMethod.POST, "/api/movimientos").hasAnyRole("ADMIN", "EMPLEADO")
                 // Demás API endpoints requieren autenticación
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()

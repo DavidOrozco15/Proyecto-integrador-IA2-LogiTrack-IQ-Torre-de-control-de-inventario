@@ -7,6 +7,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -36,6 +37,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("error", "Bad Request");
+        response.put("message", "El cuerpo de la solicitud no es valido o tiene un formato incorrecto.");
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, Object>> handleNoSuchElementException(NoSuchElementException ex) {
         Map<String, Object> response = new HashMap<>();
@@ -52,7 +63,7 @@ public class GlobalExceptionHandler {
         response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.FORBIDDEN.value());
         response.put("error", "Forbidden");
-        response.put("message", "Acceso denegado. No tiene permisos para realizar esta acción.");
+        response.put("message", "Acceso denegado. No tiene permisos para realizar esta accion.");
         return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
@@ -80,7 +91,7 @@ public class GlobalExceptionHandler {
         response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.UNAUTHORIZED.value());
         response.put("error", "Unauthorized");
-        response.put("message", "Usuario o contraseña incorrectos.");
+        response.put("message", "Usuario o contrasena incorrectos.");
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 

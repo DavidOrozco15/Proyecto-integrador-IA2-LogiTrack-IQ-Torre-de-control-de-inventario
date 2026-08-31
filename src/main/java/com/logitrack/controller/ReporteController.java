@@ -1,27 +1,35 @@
 package com.logitrack.controller;
 
-import com.logitrack.dto.ResumenReporteDTO;
-import com.logitrack.service.ReporteService;
+import com.logitrack.model.EstadoOrdenCompra;
+import com.logitrack.model.MovimientoInventario;
+import com.logitrack.model.TipoMovimiento;
+import com.logitrack.dto.ProductoRiesgoDTO;
+import com.logitrack.service.InventarioAnalyticsService;
+import com.logitrack.service.MovimientoInventarioService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/reportes")
+@RequestMapping("/api")
 public class ReporteController {
 
-    private final ReporteService reporteService;
+    private final InventarioAnalyticsService inventarioAnalyticsService;
+    private final MovimientoInventarioService movimientoInventarioService;
 
-    public ReporteController(ReporteService reporteService) {
-        this.reporteService = reporteService;
+    public ReporteController(InventarioAnalyticsService inventarioAnalyticsService,
+                             MovimientoInventarioService movimientoInventarioService) {
+        this.inventarioAnalyticsService = inventarioAnalyticsService;
+        this.movimientoInventarioService = movimientoInventarioService;
     }
 
-    @GetMapping("/resumen")
-    public ResponseEntity<ResumenReporteDTO> obtenerResumenGeneral(
-            @RequestParam(value = "dias", required = false, defaultValue = "30") Integer dias,
-            @RequestParam(value = "limit", required = false, defaultValue = "20") Integer limit) {
-        return ResponseEntity.ok(reporteService.obtenerResumenGeneral(dias, limit));
+    @GetMapping("/kpis")
+    @PreAuthorize("hasAnyRole('ADMIN', 'AGENTE', 'EMPLEADO')")
+    public ResponseEntity<Map<String, Object>> obtenerKPIs() {
+        return ResponseEntity.ok(inventarioAnalyticsService.obtenerKPIsCompletos());
     }
 }

@@ -14,4 +14,6 @@ public class StockPorBodegaDTO {
     private Long bodegaId;
     private String bodegaNombre;
     private long stockTotal;
+    private int capacidad;
+    private double porcentajeOcupacion;
 }

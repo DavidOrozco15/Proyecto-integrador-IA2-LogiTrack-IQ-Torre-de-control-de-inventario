@@ -1,0 +1,430 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 6,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.cron",
+      "position": [-144, 400],
+      "name": "Programador 6:00 am",
+      "id": "2fc986d5-3f22-4ec3-ac30-55f43f683b51",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// NOTA: por seguridad, en producción mueve mcp_username / mcp_password\n// a credenciales de n8n (HTTP Header Auth / Basic Auth) en vez de dejarlas\n// en texto plano dentro del código.\nreturn [{\n  json: {\n    mcp_base_url: \"http://mcp:8081\",\n    mcp_username: \"agente_user\",\n    mcp_password: \"admin123\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [80, 400],
+      "id": "2ccab428-aa7b-4909-83dd-3c13e7301943",
+      "name": "Config MCP"
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_kpis",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [304, 112],
+      "name": "consultar_kpis",
+      "id": "154282db-eb8e-48ca-bcdc-d631b62f1ebc",
+      "typeVersion": 4.5,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_productos_en_riesgo",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [304, 304],
+      "name": "consultar_productos_en_riesgo",
+      "id": "3f75701d-09b6-4eb7-81a0-716046557222",
+      "typeVersion": 4.5,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_bodegas_criticas",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [304, 496],
+      "name": "consultar_bodegas_criticas",
+      "id": "c3538156-43f4-4ded-855c-f065d0299b7c",
+      "typeVersion": 4.5,
+      "alwaysOutputData": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/consultar_ordenes_borrador",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [304, 688],
+      "name": "consultar_ordenes_borrador",
+      "id": "b1eba8fd-f4f2-45bf-a2f4-ddc0e229bba6",
+      "typeVersion": 4.5,
+      "alwaysOutputData": false,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta a SIEMPRE 1 item con un array adentro,\n// sin importar si la API devolvió un objeto único o un array de 0/1/N elementos.\nreturn [{ json: { data: $input.all().map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 112],
+      "id": "ee111111-1111-1111-1111-111111111111",
+      "name": "Normalizar KPIs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta a SIEMPRE 1 item con un array adentro,\n// sin importar si la API devolvió un objeto único o un array de 0/1/N elementos.\nreturn [{ json: { data: $input.all().map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 304],
+      "id": "ee222222-2222-2222-2222-222222222222",
+      "name": "Normalizar Productos en Riesgo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta a SIEMPRE 1 item con un array adentro,\n// sin importar si la API devolvió un objeto único o un array de 0/1/N elementos.\nreturn [{ json: { data: $input.all().map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 496],
+      "id": "ee333333-3333-3333-3333-333333333333",
+      "name": "Normalizar Bodegas Criticas"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza la respuesta a SIEMPRE 1 item con un array adentro,\n// sin importar si la API devolvió un objeto único o un array de 0/1/N elementos.\nreturn [{ json: { data: $input.all().map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [416, 688],
+      "id": "ee444444-4444-4444-4444-444444444444",
+      "name": "Normalizar Ordenes Borrador"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [528, 208],
+      "id": "aa111111-1111-1111-1111-111111111111",
+      "name": "Merge KPIs+Productos"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [752, 352],
+      "id": "aa222222-2222-2222-2222-222222222222",
+      "name": "Merge +Bodegas"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [976, 496],
+      "id": "aa333333-3333-3333-3333-333333333333",
+      "name": "Merge +Ordenes"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Los 4 inputs llegan ahora como 4 items reales (gracias a los nodos Merge),\n// cada uno ya normalizado a { data: [...] } por los nodos \"Normalizar *\".\n// Orden: kpis, productosEnRiesgo, bodegasCriticas, ordenesBorrador\nconst items = $input.all();\n\nconsole.log('Items count:', items.length);\nitems.forEach((item, i) => console.log(`Item ${i}:`, JSON.stringify(item).substring(0, 200)));\n\n// kpis es un recurso único: tomamos el primer (y único) elemento del array\nconst kpis = items[0]?.json?.data?.[0] ?? {};\n// estos tres son listas: se quedan como array completo\nconst productosEnRiesgo = items[1]?.json?.data ?? [];\nconst bodegasCriticas = items[2]?.json?.data ?? [];\nconst ordenesBorrador = items[3]?.json?.data ?? [];\n\nreturn [{\n  json: {\n    kpis,\n    productosEnRiesgo,\n    bodegasCriticas,\n    ordenesBorrador\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 496],
+      "id": "4c0137f6-7108-497d-926c-69fc12f86dcd",
+      "name": "Merge MCP Data"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ JSON.stringify($node[\"Merge MCP Data\"].json) }}  ",
+        "options": {
+          "systemMessage": "Eres un analista senior de inventario. Genera un resumen ejecutivo diario en JSON válido con EXACTAMENTE estas 4 propiedades y ninguna más: fecha, narrativa, alertas, accionesSugeridas. No agregues propiedades adicionales bajo ninguna circunstancia. Usa SOLO los datos proporcionados, no inventes datos. Responde solo JSON válido, sin markdown, sin texto antes o después. Reglas estrictas: fecha: string formato YYYY-MM-DD (fecha de hoy). narrativa: string de 20 a 500 caracteres, ejecutivo y accionable. alertas: array (puede ir vacío); cada alerta tiene EXACTAMENTE las propiedades severidad (BAJA, MEDIA o ALTA), titulo, detalle, productoId, ordenId, bodegaId; debe tener al menos uno de productoId/ordenId/bodegaId con valor no nulo (los que no apliquen van en null); solo riesgo real basado en los datos. accionesSugeridas: array (puede ir vacío); cada acción tiene EXACTAMENTE las propiedades tipo, descripcion, ordenId, productoId, bodegaId; tipo debe ser EXACTAMENTE uno de: REVISAR_ORDEN (usar ordenId, productoId y bodegaId en null), REVISAR_PRODUCTO (usar productoId, ordenId y bodegaId en null), REVISAR_BODEGA (usar bodegaId, productoId y ordenId en null); cada acción debe tener EXACTAMENTE un ID no nulo, nunca cero ni más de uno."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [1424, 496],
+      "id": "ff74f5bc-8e06-4d87-bf92-4699941d6383",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "=meta-llama/llama-3.3-70b-instruct:free",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [1424, 728],
+      "id": "abaf5db1-1307-4d92-8d50-9a653b55e87c",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Gyj26E7SAWp2TVEM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// El AI Agent devuelve texto (aunque le pidamos JSON), hay que parsearlo\nconst raw = $input.first().json;\nlet text = raw.output ?? raw.text ?? raw;\n\nif (typeof text !== 'string') {\n  return [{ json: text }];\n}\n\n// Quitar posibles cercas de markdown ```json ... ```\ntext = text.trim()\n  .replace(/^```json\\s*/i, '')\n  .replace(/^```\\s*/i, '')\n  .replace(/```$/i, '')\n  .trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(text);\n} catch (err) {\n  throw new Error('La respuesta del AI Agent no es JSON válido: ' + err.message + ' | Texto recibido: ' + text.substring(0, 300));\n}\n\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1648, 496],
+      "id": "bb444444-4444-4444-4444-444444444444",
+      "name": "Parse AI Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "48cda464-fda2-47ed-b3b5-50b9814b6331",
+              "leftValue": "={{ $json.alertas ? $json.alertas.length : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "position": [1872, 496],
+      "name": "¿Hay productos en riesgo?",
+      "id": "16cd4d65-d969-43a1-8b13-9ea3803f8718",
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "jsCode": "// El backend ya devuelve proveedorId, bodegaDestinoId y precioUnitario\n// reales en cada producto en riesgo (fix aplicado en InventarioAnalyticsServiceImpl).\n// Los defaults de abajo quedan SOLO como fallback de seguridad, por si algún\n// producto no tiene proveedor/bodega asignada todavía.\nconst productos = $('Merge MCP Data').first().json.productosEnRiesgo || [];\n\nconst PROVEEDOR_ID_FALLBACK = 1;\nconst BODEGA_DESTINO_ID_FALLBACK = 1;\nconst PRECIO_UNITARIO_FALLBACK = 100;\n\nreturn productos\n  .filter(p => p.estado === 'EN_RIESGO')\n  .map(p => {\n    const cantidad = Math.ceil(Math.max(1, (p.puntoReorden * 2) - p.stockTotal));\n    const proveedorId = p.proveedorId ?? PROVEEDOR_ID_FALLBACK;\n    const bodegaDestinoId = p.bodegaDestinoId ?? BODEGA_DESTINO_ID_FALLBACK;\n    const precioUnitario = p.precioUnitario ?? PRECIO_UNITARIO_FALLBACK;\n\n    if (p.proveedorId == null || p.bodegaDestinoId == null || p.precioUnitario == null) {\n      console.log(`Producto ${p.productoId} (${p.nombre}) usó algún fallback: proveedorId=${proveedorId}, bodegaDestinoId=${bodegaDestinoId}, precioUnitario=${precioUnitario}`);\n    }\n\n    return {\n      json: {\n        productoId: p.productoId,\n        proveedorId,\n        bodegaDestinoId,\n        cantidad,\n        precioUnitario,\n        _productoNombre: p.nombre,\n        _proveedorNombre: p.proveedor\n      }\n    };\n  });"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2096, 400],
+      "id": "cc555555-5555-5555-5555-555555555555",
+      "name": "Preparar Items Productos en Riesgo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/crear_orden_borrador",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\"Content-Type\": \"application/json\"}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ productoId: $json.productoId, proveedorId: $json.proveedorId, bodegaDestinoId: $json.bodegaDestinoId, cantidad: $json.cantidad, precioUnitario: $json.precioUnitario }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2320, 400],
+      "name": "crear_orden_borrador",
+      "id": "e12fac93-7d82-475a-83eb-767ddf20e8c3",
+      "typeVersion": 4.5
+    },
+    {
+      "parameters": {
+        "jsCode": "// crear_orden_borrador corrió una vez por producto (n8n itera items automáticamente).\n// Aquí agrupamos todas las órdenes creadas en un solo item para el resumen.\nconst items = $input.all();\nreturn [{\n  json: {\n    ordenesCreadas: items.map(i => i.json)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2544, 400],
+      "id": "dd666666-6666-6666-6666-666666666666",
+      "name": "Agrupar Ordenes Creadas"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/publicar_resumen",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\"Content-Type\": \"application/json\"}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fecha: $('Parse AI Output').first().json.fecha, narrativa: $('Parse AI Output').first().json.narrativa, alertas: $('Parse AI Output').first().json.alertas, accionesSugeridas: $('Parse AI Output').first().json.accionesSugeridas }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2768, 400],
+      "name": "publicar_resumen_con_orden",
+      "id": "041e5adc-e7d8-48d9-a591-2821d1be4d61",
+      "typeVersion": 4.5
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$('Config MCP').first().json.mcp_base_url}}/tools/publicar_resumen",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\"Content-Type\": \"application/json\"}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ fecha: $json.fecha, narrativa: $json.narrativa, alertas: $json.alertas, accionesSugeridas: $json.accionesSugeridas }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [2096, 592],
+      "name": "publicar_resumen_sin_orden",
+      "id": "7d9a8b66-ef92-4186-810c-288f0183a467",
+      "typeVersion": 4.5
+    }
+  ],
+  "connections": {
+    "Programador 6:00 am": {
+      "main": [
+        [{ "node": "Config MCP", "type": "main", "index": 0 }]
+      ]
+    },
+    "Config MCP": {
+      "main": [
+        [
+          { "node": "consultar_kpis", "type": "main", "index": 0 },
+          { "node": "consultar_productos_en_riesgo", "type": "main", "index": 0 },
+          { "node": "consultar_bodegas_criticas", "type": "main", "index": 0 },
+          { "node": "consultar_ordenes_borrador", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "consultar_kpis": {
+      "main": [
+        [{ "node": "Normalizar KPIs", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar KPIs": {
+      "main": [
+        [{ "node": "Merge KPIs+Productos", "type": "main", "index": 0 }]
+      ]
+    },
+    "consultar_productos_en_riesgo": {
+      "main": [
+        [{ "node": "Normalizar Productos en Riesgo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar Productos en Riesgo": {
+      "main": [
+        [{ "node": "Merge KPIs+Productos", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge KPIs+Productos": {
+      "main": [
+        [{ "node": "Merge +Bodegas", "type": "main", "index": 0 }]
+      ]
+    },
+    "consultar_bodegas_criticas": {
+      "main": [
+        [{ "node": "Normalizar Bodegas Criticas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar Bodegas Criticas": {
+      "main": [
+        [{ "node": "Merge +Bodegas", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge +Bodegas": {
+      "main": [
+        [{ "node": "Merge +Ordenes", "type": "main", "index": 0 }]
+      ]
+    },
+    "consultar_ordenes_borrador": {
+      "main": [
+        [{ "node": "Normalizar Ordenes Borrador", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalizar Ordenes Borrador": {
+      "main": [
+        [{ "node": "Merge +Ordenes", "type": "main", "index": 1 }]
+      ]
+    },
+    "Merge +Ordenes": {
+      "main": [
+        [{ "node": "Merge MCP Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge MCP Data": {
+      "main": [
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [{ "node": "Parse AI Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [{ "node": "¿Hay productos en riesgo?", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Hay productos en riesgo?": {
+      "main": [
+        [{ "node": "Preparar Items Productos en Riesgo", "type": "main", "index": 0 }],
+        [{ "node": "publicar_resumen_sin_orden", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar Items Productos en Riesgo": {
+      "main": [
+        [{ "node": "crear_orden_borrador", "type": "main", "index": 0 }]
+      ]
+    },
+    "crear_orden_borrador": {
+      "main": [
+        [{ "node": "Agrupar Ordenes Creadas", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agrupar Ordenes Creadas": {
+      "main": [
+        [{ "node": "publicar_resumen_con_orden", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9ddbd49ea2737bdf67a92c2e828ac33882da8fef987d3ddc30572554d84c743d"
+  }
+}

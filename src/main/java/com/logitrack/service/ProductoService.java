@@ -1,6 +1,7 @@
 package com.logitrack.service;
 
 import com.logitrack.dto.ProductoConInventarioDTO;
+import com.logitrack.model.Bodega;
 import com.logitrack.model.Producto;
 
 import java.util.List;
@@ -31,4 +32,8 @@ public interface ProductoService {
     List<ProductoConInventarioDTO> obtenerTodosConInventario();
 
     ProductoConInventarioDTO obtenerConInventarioPorId(Long id);
+
+    Map<String, Object> obtenerStockPorProducto(Long id);
+
+    Bodega obtenerBodegaSugerida(Long productoId);
 }
